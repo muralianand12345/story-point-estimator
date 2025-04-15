@@ -1,73 +1,56 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { generateRoomCode } from '../utils/roomUtils';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import * as api from '@/lib/api';
 
 // Define types
-type Participant = {
-    id: string;
-    name: string;
-    vote: string | null;
-    isHost: boolean;
-};
+type Participant = api.Participant;
 
-type Room = {
-    id: string;
-    name: string;
-    description: string;
-    participants: Participant[];
-    votingOptions: string[];
-    isRevealed: boolean;
-    createdAt: number;
-};
+type Room = api.Room;
 
 interface RoomContextType {
     room: Room | null;
     userId: string | null;
-    createRoom: (name: string, description: string, hostName: string) => string;
-    joinRoom: (roomId: string, participantName: string) => boolean;
-    leaveRoom: () => void;
-    submitVote: (vote: string) => void;
-    revealVotes: () => void;
-    resetVotes: () => void;
-    checkRoomExists: (roomId: string) => boolean;
-    refreshRoom: (roomId: string) => void;
+    isLoading: boolean;
+    error: string | null;
+    createRoom: (name: string, description: string, hostName: string) => Promise<string>;
+    joinRoom: (roomId: string, participantName: string) => Promise<boolean>;
+    leaveRoom: () => Promise<void>;
+    submitVote: (vote: string) => Promise<void>;
+    revealVotes: () => Promise<void>;
+    resetVotes: () => Promise<void>;
+    checkRoomExists: (roomId: string) => Promise<boolean>;
+    refreshRoom: (roomId: string) => Promise<void>;
 }
 
 // Create context with default values
 const RoomContext = createContext<RoomContextType>({
     room: null,
     userId: null,
-    createRoom: () => '',
-    joinRoom: () => false,
-    leaveRoom: () => { },
-    submitVote: () => { },
-    revealVotes: () => { },
-    resetVotes: () => { },
-    checkRoomExists: () => false,
-    refreshRoom: () => { },
+    isLoading: false,
+    error: null,
+    createRoom: async () => '',
+    joinRoom: async () => false,
+    leaveRoom: async () => { },
+    submitVote: async () => { },
+    revealVotes: async () => { },
+    resetVotes: async () => { },
+    checkRoomExists: async () => false,
+    refreshRoom: async () => { },
 });
-
-// Default voting options based on Fibonacci sequence
-const DEFAULT_VOTING_OPTIONS = ['0', '1', '2', '3', '5', '8', '13', '21', '?'];
 
 // Generate a random user ID
 const generateUserId = () => {
     return Math.random().toString(36).substring(2, 15);
 };
 
-// Format room ID consistently
-const formatRoomId = (roomId: string): string => {
-    return roomId.trim().toUpperCase();
-};
-
 export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [room, setRoom] = useState<Room | null>(null);
     const [userId, setUserId] = useState<string | null>(null);
-    // This flag helps prevent hydration mismatches
-    const [isClient, setIsClient] = useState(false);
-    // Use ref to track the current room ID to avoid dependency issues
-    const currentRoomIdRef = useRef<string | null>(null);
+    const [participantId, setParticipantId] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string | null>(null);
+    const [isClient, setIsClient] = useState<boolean>(false);
 
     // Set isClient to true once component mounts on client
     useEffect(() => {
@@ -87,290 +70,280 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
             localStorage.setItem('userId', newUserId);
         }
 
+        // Load participant ID if exists
+        const storedParticipantId = localStorage.getItem('participantId');
+        if (storedParticipantId) {
+            setParticipantId(storedParticipantId);
+        }
+
         // Check if user was in a room
-        const storedRoomData = localStorage.getItem('currentRoom');
-        if (storedRoomData) {
-            try {
-                const parsedRoom = JSON.parse(storedRoomData);
-                // Verify the room still exists in localStorage
-                const roomStillExists = localStorage.getItem(`room_${parsedRoom.id}`);
-                if (roomStillExists) {
-                    // Get the latest room data
-                    const latestRoom = JSON.parse(roomStillExists);
-                    setRoom(latestRoom);
-                    currentRoomIdRef.current = latestRoom.id;
-                } else {
-                    // Room was deleted
-                    localStorage.removeItem('currentRoom');
-                }
-            } catch (e) {
-                localStorage.removeItem('currentRoom');
-            }
+        const storedRoomId = localStorage.getItem('currentRoomId');
+        if (storedRoomId) {
+            refreshRoom(storedRoomId).catch(console.error);
         }
     }, [isClient]);
 
-    // Add a function to refresh room data from localStorage
-    const refreshRoom = (roomId: string) => {
-        if (!roomId || !isClient) return;
-
-        const formattedRoomId = formatRoomId(roomId);
-        const roomData = localStorage.getItem(`room_${formattedRoomId}`);
-
-        if (roomData) {
-            try {
-                const latestRoom = JSON.parse(roomData);
-                setRoom(latestRoom);
-                localStorage.setItem('currentRoom', JSON.stringify(latestRoom));
-                currentRoomIdRef.current = latestRoom.id;
-            } catch (e) {
-                console.error('Error parsing room data:', e);
-            }
-        }
-    };
-
-    // Set up an interval to refresh room data periodically
+    // Subscribe to WebSocket updates when in a room
     useEffect(() => {
-        if (!isClient) return;
+        if (!isClient || !room?.id) return;
 
-        // Only set up interval if room exists
-        if (!currentRoomIdRef.current) return;
-
-        const roomId = currentRoomIdRef.current;
-        const intervalId = setInterval(() => {
-            // Use the ref instead of the state to avoid dependency issues
-            const currentRoomId = currentRoomIdRef.current;
-            if (currentRoomId) {
-                const roomData = localStorage.getItem(`room_${currentRoomId}`);
-                if (roomData) {
-                    try {
-                        const latestRoom = JSON.parse(roomData);
-                        setRoom(latestRoom);
-                    } catch (e) {
-                        console.error('Error refreshing room data:', e);
-                    }
+        // Subscribe to real-time updates for the current room
+        const unsubscribe = api.subscribeToRoom(room.id, {
+            onUpdate: (updatedRoom) => {
+                if (updatedRoom.deleted) {
+                    // Room was deleted
+                    setRoom(null);
+                    setParticipantId(null);
+                    localStorage.removeItem('currentRoomId');
+                    localStorage.removeItem('participantId');
+                } else {
+                    setRoom(updatedRoom);
                 }
-            }
-        }, 3000); // Refresh every 3 seconds
+            },
+            onParticipantJoin: (data) => {
+                setRoom(data.room);
+            },
+            onParticipantLeave: (data) => {
+                if (data.roomDeleted) {
+                    setRoom(null);
+                    setParticipantId(null);
+                    localStorage.removeItem('currentRoomId');
+                    localStorage.removeItem('participantId');
+                } else if (data.room) {
+                    setRoom(data.room);
+                }
+            },
+            onVoteSubmit: (updatedRoom) => {
+                setRoom(updatedRoom);
+            },
+            onVotesReveal: (updatedRoom) => {
+                setRoom(updatedRoom);
+            },
+            onVotesReset: (updatedRoom) => {
+                setRoom(updatedRoom);
+            },
+        });
 
-        return () => clearInterval(intervalId);
-    }, [isClient]); // Only depend on isClient, not on room
+        // Cleanup subscription on unmount or room change
+        return () => {
+            unsubscribe();
+        };
+    }, [isClient, room?.id]);
 
-    // Save room data to localStorage whenever it changes
+    // Initial load of room data if needed
     useEffect(() => {
         if (!isClient) return;
 
-        if (room) {
-            localStorage.setItem('currentRoom', JSON.stringify(room));
-            currentRoomIdRef.current = room.id;
-        } else {
-            localStorage.removeItem('currentRoom');
-            currentRoomIdRef.current = null;
+        // Check if user was in a room
+        const storedRoomId = localStorage.getItem('currentRoomId');
+        if (storedRoomId) {
+            refreshRoom(storedRoomId).catch(console.error);
         }
-    }, [room, isClient]);
+    }, [isClient]);
 
     // Create a new room
-    const createRoom = (name: string, description: string, hostName: string): string => {
-        if (!isClient) return '';
+    const createRoom = async (name: string, description: string, hostName: string): Promise<string> => {
+        setIsLoading(true);
+        setError(null);
 
-        if (!userId) {
-            const newUserId = generateUserId();
-            setUserId(newUserId);
-            localStorage.setItem('userId', newUserId);
+        try {
+            if (!userId) {
+                const newUserId = generateUserId();
+                setUserId(newUserId);
+                localStorage.setItem('userId', newUserId);
+            }
+
+            const newRoom = await api.createRoom(name, description, hostName);
+
+            // Find the host participant (created along with the room)
+            const hostParticipant = newRoom.participants.find(p => p.isHost);
+
+            if (hostParticipant) {
+                setParticipantId(hostParticipant.id);
+                localStorage.setItem('participantId', hostParticipant.id);
+            }
+
+            setRoom(newRoom);
+            localStorage.setItem('currentRoomId', newRoom.id);
+
+            return newRoom.id;
+        } catch (err) {
+            console.error('Error creating room:', err);
+            setError('Failed to create room');
+            return '';
+        } finally {
+            setIsLoading(false);
         }
-
-        const roomId = generateRoomCode();
-        const newRoom: Room = {
-            id: roomId,
-            name,
-            description,
-            participants: [
-                {
-                    id: userId || generateUserId(),
-                    name: hostName,
-                    vote: null,
-                    isHost: true,
-                },
-            ],
-            votingOptions: DEFAULT_VOTING_OPTIONS,
-            isRevealed: false,
-            createdAt: Date.now(),
-        };
-
-        // Save to localStorage
-        localStorage.setItem(`room_${roomId}`, JSON.stringify(newRoom));
-        setRoom(newRoom);
-        currentRoomIdRef.current = roomId;
-        return roomId;
     };
 
     // Join an existing room
-    const joinRoom = (roomId: string, participantName: string): boolean => {
-        if (!isClient) return false;
+    const joinRoom = async (roomId: string, participantName: string): Promise<boolean> => {
+        setIsLoading(true);
+        setError(null);
 
-        // Format the room ID consistently
-        const formattedRoomId = formatRoomId(roomId);
+        try {
+            const result = await api.joinRoom(roomId, participantName);
 
-        const roomData = localStorage.getItem(`room_${formattedRoomId}`);
-        if (!roomData) return false;
-
-        const existingRoom: Room = JSON.parse(roomData);
-
-        // Check if this user already exists in the room
-        const existingParticipant = existingRoom.participants.find(
-            (p) => p.id === userId
-        );
-
-        if (existingParticipant) {
-            // User is rejoining, update their name if different
-            if (existingParticipant.name !== participantName) {
-                const updatedParticipants = existingRoom.participants.map(p =>
-                    p.id === userId ? { ...p, name: participantName } : p
-                );
-                const updatedRoom = { ...existingRoom, participants: updatedParticipants };
-                localStorage.setItem(`room_${formattedRoomId}`, JSON.stringify(updatedRoom));
-                setRoom(updatedRoom);
-                currentRoomIdRef.current = formattedRoomId;
-            } else {
-                setRoom(existingRoom);
-                currentRoomIdRef.current = formattedRoomId;
+            if (!result) {
+                setError('Failed to join room');
+                return false;
             }
-        } else {
-            // New participant joining
-            const newParticipant: Participant = {
-                id: userId || generateUserId(),
-                name: participantName,
-                vote: null,
-                isHost: false, // Always join as a non-host
-            };
 
-            const updatedRoom = {
-                ...existingRoom,
-                participants: [...existingRoom.participants, newParticipant],
-            };
+            setRoom(result.room);
+            setParticipantId(result.participant.id);
 
-            localStorage.setItem(`room_${formattedRoomId}`, JSON.stringify(updatedRoom));
-            setRoom(updatedRoom);
-            currentRoomIdRef.current = formattedRoomId;
+            localStorage.setItem('currentRoomId', roomId);
+            localStorage.setItem('participantId', result.participant.id);
+
+            return true;
+        } catch (err) {
+            console.error('Error joining room:', err);
+            setError('Failed to join room');
+            return false;
+        } finally {
+            setIsLoading(false);
         }
-
-        return true;
     };
 
     // Leave the current room
-    const leaveRoom = () => {
-        if (!room || !userId || !isClient) return;
+    const leaveRoom = async (): Promise<void> => {
+        if (!room || !participantId) return;
 
-        // If user is host, we could handle room deletion differently
-        const isHost = room.participants.find(p => p.id === userId)?.isHost;
+        setIsLoading(true);
+        setError(null);
 
-        if (isHost) {
-            // If host leaves, delete the room
-            localStorage.removeItem(`room_${room.id}`);
-        } else {
-            // Just remove the participant
-            const updatedParticipants = room.participants.filter(p => p.id !== userId);
-            const updatedRoom = { ...room, participants: updatedParticipants };
-            localStorage.setItem(`room_${room.id}`, JSON.stringify(updatedRoom));
+        try {
+            await api.leaveRoom(room.id, participantId);
+
+            setRoom(null);
+            setParticipantId(null);
+
+            localStorage.removeItem('currentRoomId');
+            localStorage.removeItem('participantId');
+        } catch (err) {
+            console.error('Error leaving room:', err);
+            setError('Failed to leave room');
+        } finally {
+            setIsLoading(false);
         }
-
-        setRoom(null);
-        currentRoomIdRef.current = null;
     };
 
     // Submit a vote
-    const submitVote = (vote: string) => {
-        if (!room || !userId || !isClient) return;
+    const submitVote = async (vote: string): Promise<void> => {
+        if (!room || !participantId) return;
 
-        // Get the latest room data first
-        const latestRoomData = localStorage.getItem(`room_${room.id}`);
-        if (!latestRoomData) return;
+        setIsLoading(true);
+        setError(null);
 
         try {
-            const latestRoom: Room = JSON.parse(latestRoomData);
-
-            // Update the participant's vote
-            const updatedParticipants = latestRoom.participants.map(participant =>
-                participant.id === userId ? { ...participant, vote } : participant
-            );
-
-            const updatedRoom = { ...latestRoom, participants: updatedParticipants };
-            localStorage.setItem(`room_${room.id}`, JSON.stringify(updatedRoom));
+            const updatedRoom = await api.submitVote(room.id, participantId, vote);
             setRoom(updatedRoom);
-        } catch (e) {
-            console.error('Error submitting vote:', e);
+        } catch (err) {
+            console.error('Error submitting vote:', err);
+            setError('Failed to submit vote');
+        } finally {
+            setIsLoading(false);
         }
     };
 
-    // Reveal all votes
-    const revealVotes = () => {
-        if (!room || !userId || !isClient) return;
+    // Reveal votes
+    const revealVotes = async (): Promise<void> => {
+        if (!room) return;
 
-        // Only the host can reveal votes
-        const isHost = room.participants.find(p => p.id === userId)?.isHost;
-        if (!isHost) return;
-
-        // Get the latest room data first
-        const latestRoomData = localStorage.getItem(`room_${room.id}`);
-        if (!latestRoomData) return;
+        setIsLoading(true);
+        setError(null);
 
         try {
-            const latestRoom: Room = JSON.parse(latestRoomData);
-
-            const updatedRoom = { ...latestRoom, isRevealed: true };
-            localStorage.setItem(`room_${room.id}`, JSON.stringify(updatedRoom));
+            const updatedRoom = await api.revealVotes(room.id);
             setRoom(updatedRoom);
-        } catch (e) {
-            console.error('Error revealing votes:', e);
+        } catch (err) {
+            console.error('Error revealing votes:', err);
+            setError('Failed to reveal votes');
+        } finally {
+            setIsLoading(false);
         }
     };
 
     // Reset votes for a new round
-    const resetVotes = () => {
-        if (!room || !userId || !isClient) return;
+    const resetVotes = async (): Promise<void> => {
+        if (!room) return;
 
-        // Only the host can reset votes
-        const isHost = room.participants.find(p => p.id === userId)?.isHost;
-        if (!isHost) return;
-
-        // Get the latest room data first
-        const latestRoomData = localStorage.getItem(`room_${room.id}`);
-        if (!latestRoomData) return;
+        setIsLoading(true);
+        setError(null);
 
         try {
-            const latestRoom: Room = JSON.parse(latestRoomData);
-
-            const updatedParticipants = latestRoom.participants.map(participant => ({
-                ...participant,
-                vote: null,
-            }));
-
-            const updatedRoom = {
-                ...latestRoom,
-                participants: updatedParticipants,
-                isRevealed: false
-            };
-
-            localStorage.setItem(`room_${room.id}`, JSON.stringify(updatedRoom));
+            const updatedRoom = await api.resetVotes(room.id);
             setRoom(updatedRoom);
-        } catch (e) {
-            console.error('Error resetting votes:', e);
+        } catch (err) {
+            console.error('Error resetting votes:', err);
+            setError('Failed to reset votes');
+        } finally {
+            setIsLoading(false);
         }
     };
 
     // Check if a room exists
-    const checkRoomExists = (roomId: string): boolean => {
-        if (!isClient) return false;
+    const checkRoomExists = async (roomId: string): Promise<boolean> => {
+        setIsLoading(true);
+        setError(null);
 
-        // Format the room ID consistently
-        const formattedRoomId = formatRoomId(roomId);
-
-        const roomData = localStorage.getItem(`room_${formattedRoomId}`);
-        return !!roomData;
+        try {
+            const exists = await api.checkRoomExists(roomId);
+            return exists;
+        } catch (err) {
+            console.error('Error checking room existence:', err);
+            setError('Failed to check if room exists');
+            return false;
+        } finally {
+            setIsLoading(false);
+        }
     };
 
+    // Refresh room data
+    const refreshRoom = async (roomId: string): Promise<void> => {
+        if (!roomId || !isClient) return;
+
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            const latestRoom = await api.getRoom(roomId);
+
+            if (latestRoom) {
+                setRoom(latestRoom);
+
+                // If we have a participantId, verify the participant still exists in the room
+                if (participantId) {
+                    const participantExists = latestRoom.participants.some(
+                        p => p.id === participantId
+                    );
+
+                    if (!participantExists) {
+                        setParticipantId(null);
+                        localStorage.removeItem('participantId');
+                    }
+                }
+            } else {
+                // Room no longer exists
+                setRoom(null);
+                setParticipantId(null);
+                localStorage.removeItem('currentRoomId');
+                localStorage.removeItem('participantId');
+            }
+        } catch (err) {
+            console.error('Error refreshing room:', err);
+            setError('Failed to refresh room data');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Context value
     const contextValue = {
         room,
         userId,
+        isLoading,
+        error,
         createRoom,
         joinRoom,
         leaveRoom,
@@ -381,7 +354,11 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         refreshRoom,
     };
 
-    return <RoomContext.Provider value={contextValue}> {children} </RoomContext.Provider>;
+    return (
+        <RoomContext.Provider value={contextValue}>
+            {children}
+        </RoomContext.Provider>
+    );
 };
 
 export const useRoom = () => useContext(RoomContext);

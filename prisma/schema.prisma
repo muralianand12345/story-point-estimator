@@ -1,0 +1,37 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Room {
+  id            String        @id @default(cuid())
+  name          String
+  description   String?
+  isRevealed    Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  votingOptions String[]      @default(["0", "1", "2", "3", "5", "8", "13", "21", "?"])
+  participants  Participant[]
+
+  @@index([createdAt])
+}
+
+model Participant {
+  id        String   @id @default(cuid())
+  name      String
+  isHost    Boolean  @default(false)
+  vote      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+}
