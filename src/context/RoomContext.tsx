@@ -189,8 +189,6 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         try {
             const roomId = room.id;
-            console.log(`Leaving room ${roomId} as participant ${participantId}`);
-
             // Make the API call to leave the room
             await api.leaveRoom(roomId, participantId);
 
@@ -219,8 +217,6 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const submitVote = async (vote: string): Promise<void> => {
         if (!room || !participantId) {
             console.error('Cannot submit vote: room or participantId is missing');
-            console.log('Room ID:', room?.id);
-            console.log('Participant ID:', participantId);
             setError('Cannot submit vote: not properly connected to room');
             return;
         }
@@ -229,7 +225,6 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setError(null);
 
         try {
-            console.log(`Submitting vote ${vote} for participant ${participantId} in room ${room.id}`);
             // Ensure neither value is null/undefined before making API call
             if (room.id && participantId) {
                 const updatedRoom = await api.submitVote(room.id, participantId, vote);

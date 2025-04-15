@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getParamId } from '@/utils/apiUtils';
 
 // Reset all votes in a room
-export async function POST(request: Request, context: { params: { id: string } }) {
+export async function POST(
+	request: Request,
+	context: { params: { id: Promise<string> } }
+) {
 	try {
 		// Extract the ID
-		const roomId = context.params.id;
+		const roomId = await getParamId(context.params.id);
 
 		if (!roomId) {
 			return NextResponse.json({ error: 'Invalid room ID' }, { status: 400 });

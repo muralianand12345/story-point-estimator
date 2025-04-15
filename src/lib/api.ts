@@ -76,8 +76,6 @@ export async function joinRoom(
     try {
         const formattedRoomId = roomId.trim().toUpperCase();
 
-        console.log(`Joining room ${formattedRoomId} as ${participantName}`);
-
         const response = await fetch(`/api/rooms/${formattedRoomId}/participants`, {
             method: 'POST',
             headers: {
@@ -125,7 +123,6 @@ export async function submitVote(
     participantId: string,
     vote: string
 ): Promise<Room> {
-    console.log(`API submitVote - roomId: ${roomId}, participantId: ${participantId}, vote: ${vote}`);
 
     if (!roomId || !participantId) {
         throw new Error('Invalid room or participant ID');

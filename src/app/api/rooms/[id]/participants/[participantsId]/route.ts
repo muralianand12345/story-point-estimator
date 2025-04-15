@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getParamId } from '@/utils/apiUtils';
 
 // Submit a vote for a participant
 export async function PATCH(
 	request: Request,
-	context: { params: { id: string; participantsId: string } }, // Note the correct parameter name: participantsId
+	context: { params: { id: Promise<string>; participantsId: Promise<string> } }
 ) {
 	try {
 		// Extract the IDs
-		const roomId = context.params.id;
-		const participantId = context.params.participantsId; // Access the correct parameter name
-
-		console.log("Debug - roomId:", roomId);
-		console.log("Debug - participantId:", participantId);
+		const roomId = await getParamId(context.params.id);
+		const participantId = await getParamId(context.params.participantsId);
 
 		if (!roomId || !participantId) {
 			return NextResponse.json(
@@ -58,15 +56,12 @@ export async function PATCH(
 // Remove a participant from a room
 export async function DELETE(
 	request: Request,
-	context: { params: { id: string; participantsId: string } }, // Note the correct parameter name
+	context: { params: { id: Promise<string>; participantsId: Promise<string> } }
 ) {
 	try {
 		// Extract the IDs
-		const roomId = context.params.id;
-		const participantId = context.params.participantsId; // Access the correct parameter name
-
-		console.log("Debug - roomId:", roomId);
-		console.log("Debug - participantId:", participantId);
+		const roomId = await getParamId(context.params.id);
+		const participantId = await getParamId(context.params.participantsId);
 
 		if (!roomId || !participantId) {
 			return NextResponse.json(

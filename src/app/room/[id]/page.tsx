@@ -48,8 +48,6 @@ export default function RoomPage() {
 		if (!roomId || !isClient) return;
 		if (initialSetupDone.current) return;
 
-		console.log("Initializing room data for:", roomId);
-
 		// Initial fetch of room data
 		refreshRoom(roomId).then(() => {
 			setIsLoading(false);
