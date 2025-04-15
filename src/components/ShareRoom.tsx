@@ -10,6 +10,7 @@ interface ShareRoomProps {
 
 const ShareRoom: React.FC<ShareRoomProps> = ({ roomId }) => {
     const [copied, setCopied] = useState(false);
+    const [copyType, setCopyType] = useState<'code' | 'link'>('code');
     const [roomLink, setRoomLink] = useState('');
     const [isClient, setIsClient] = useState(false);
 
@@ -21,28 +22,16 @@ const ShareRoom: React.FC<ShareRoomProps> = ({ roomId }) => {
     // Set room link once we're on the client
     useEffect(() => {
         if (isClient && roomId) {
-            setRoomLink(`${window.location.origin}/room/${roomId}`);
+            setRoomLink(`${window.location.origin}/join/${roomId}`);
         }
     }, [isClient, roomId]);
 
-    const copyToClipboard = () => {
-        if (navigator.clipboard && roomLink) {
-            navigator.clipboard.writeText(roomLink)
+    const copyToClipboard = (text: string, type: 'code' | 'link') => {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text)
                 .then(() => {
                     setCopied(true);
-                    setTimeout(() => setCopied(false), 2000);
-                })
-                .catch(err => {
-                    console.error('Could not copy text: ', err);
-                });
-        }
-    };
-
-    const copyRoomId = () => {
-        if (navigator.clipboard && roomId) {
-            navigator.clipboard.writeText(roomId)
-                .then(() => {
-                    setCopied(true);
+                    setCopyType(type);
                     setTimeout(() => setCopied(false), 2000);
                 })
                 .catch(err => {
@@ -77,17 +66,17 @@ const ShareRoom: React.FC<ShareRoomProps> = ({ roomId }) => {
                     <Button
                         variant="secondary"
                         size="sm"
-                        onClick={copyRoomId}
+                        onClick={() => copyToClipboard(roomId, 'code')}
                     >
-                        {copied ? 'Copied!' : 'Copy Code'}
+                        {copied && copyType === 'code' ? 'Copied!' : 'Copy Code'}
                     </Button>
 
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={copyToClipboard}
+                        onClick={() => copyToClipboard(roomLink, 'link')}
                     >
-                        Copy Link
+                        {copied && copyType === 'link' ? 'Copied!' : 'Copy Link'}
                     </Button>
                 </div>
             </div>

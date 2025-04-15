@@ -175,22 +175,41 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Leave the current room
     const leaveRoom = async (): Promise<void> => {
-        if (!room || !participantId) return;
+        if (!room || !participantId) {
+            // If we don't have room data but have localStorage data, clean it up
+            localStorage.removeItem('currentRoomId');
+            localStorage.removeItem('participantId');
+            setRoom(null);
+            setParticipantId(null);
+            return;
+        }
 
         setIsLoading(true);
         setError(null);
 
         try {
-            await api.leaveRoom(room.id, participantId);
+            const roomId = room.id;
+            console.log(`Leaving room ${roomId} as participant ${participantId}`);
 
+            // Make the API call to leave the room
+            await api.leaveRoom(roomId, participantId);
+
+            // Clean up local storage and state
+            localStorage.removeItem('currentRoomId');
+            localStorage.removeItem('participantId');
+            setRoom(null);
+            setParticipantId(null);
+        } catch (err) {
+            console.error('Error leaving room:', err);
+
+            // Even if the API call fails, clean up local state
+            // This prevents the user from being stuck
+            localStorage.removeItem('currentRoomId');
+            localStorage.removeItem('participantId');
             setRoom(null);
             setParticipantId(null);
 
-            localStorage.removeItem('currentRoomId');
-            localStorage.removeItem('participantId');
-        } catch (err) {
-            console.error('Error leaving room:', err);
-            setError('Failed to leave room');
+            setError('Failed to leave room properly');
         } finally {
             setIsLoading(false);
         }
@@ -211,8 +230,13 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         try {
             console.log(`Submitting vote ${vote} for participant ${participantId} in room ${room.id}`);
-            const updatedRoom = await api.submitVote(room.id, participantId, vote);
-            setRoom(updatedRoom);
+            // Ensure neither value is null/undefined before making API call
+            if (room.id && participantId) {
+                const updatedRoom = await api.submitVote(room.id, participantId, vote);
+                setRoom(updatedRoom);
+            } else {
+                throw new Error('Missing room ID or participant ID for vote submission');
+            }
         } catch (err) {
             console.error('Error submitting vote:', err);
             setError('Failed to submit vote');

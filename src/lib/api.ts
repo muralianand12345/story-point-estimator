@@ -68,8 +68,17 @@ export async function joinRoom(
     roomId: string,
     participantName: string
 ): Promise<{ participant: Participant; room: Room } | null> {
+    if (!roomId || !participantName) {
+        console.error('Invalid room ID or participant name for joining room');
+        return null;
+    }
+
     try {
-        const response = await fetch(`/api/rooms/${roomId}/participants`, {
+        const formattedRoomId = roomId.trim().toUpperCase();
+
+        console.log(`Joining room ${formattedRoomId} as ${participantName}`);
+
+        const response = await fetch(`/api/rooms/${formattedRoomId}/participants`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -78,8 +87,9 @@ export async function joinRoom(
         });
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to join room');
+            const errorData = await response.json().catch(() => ({}));
+            console.error('Join room response error:', errorData);
+            throw new Error(errorData.error || `Failed to join room: ${response.status}`);
         }
 
         return response.json();
@@ -121,24 +131,29 @@ export async function submitVote(
         throw new Error('Invalid room or participant ID');
     }
 
-    const response = await fetch(
-        `/api/rooms/${roomId}/participants/${participantId}`,
-        {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ vote }),
+    try {
+        const response = await fetch(
+            `/api/rooms/${roomId}/participants/${participantId}`,
+            {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ vote }),
+            }
+        );
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('Submit vote response error:', errorData);
+            throw new Error(errorData.error || `Failed to submit vote: ${response.status}`);
         }
-    );
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Submit vote response error:', errorData);
-        throw new Error(errorData.error || 'Failed to submit vote');
+        return response.json();
+    } catch (error) {
+        console.error('Submit vote error details:', error);
+        throw error;
     }
-
-    return response.json();
 }
 
 // Reveal votes
