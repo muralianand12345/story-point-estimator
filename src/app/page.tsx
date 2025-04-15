@@ -16,7 +16,6 @@ export default function Home() {
     const [name, setName] = useState('');
     const [joinError, setJoinError] = useState('');
 
-    const [creatingRoom, setCreatingRoom] = useState(false);
     const [roomName, setRoomName] = useState('');
     const [roomDescription, setRoomDescription] = useState('');
     const [hostName, setHostName] = useState('');
@@ -25,12 +24,14 @@ export default function Home() {
         e.preventDefault();
         setJoinError('');
 
-        if (!name) {
+        if (!name.trim()) {
             setJoinError('Please enter your name');
             return;
         }
 
-        const formattedRoomId = roomId.toUpperCase().trim();
+        // Format the room ID: trim whitespace and convert to uppercase
+        const formattedRoomId = roomId.trim().toUpperCase();
+
         if (!formattedRoomId) {
             setJoinError('Please enter a room code');
             return;
@@ -43,7 +44,7 @@ export default function Home() {
         }
 
         // Join the room
-        const success = joinRoom(formattedRoomId, name);
+        const success = joinRoom(formattedRoomId, name.trim());
         if (success) {
             router.push(`/room/${formattedRoomId}`);
         } else {
@@ -54,11 +55,14 @@ export default function Home() {
     const handleCreateRoom = (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!roomName || !hostName) {
+        const trimmedRoomName = roomName.trim();
+        const trimmedHostName = hostName.trim();
+
+        if (!trimmedRoomName || !trimmedHostName) {
             return;
         }
 
-        const newRoomId = createRoom(roomName, roomDescription, hostName);
+        const newRoomId = createRoom(trimmedRoomName, roomDescription.trim(), trimmedHostName);
         router.push(`/room/${newRoomId}`);
     };
 

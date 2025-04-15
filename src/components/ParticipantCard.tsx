@@ -25,7 +25,7 @@ const ParticipantCard: React.FC<ParticipantCardProps> = ({
     `}>
             <div className="flex-1">
                 <div className="flex items-center">
-                    <span className="font-medium">{name}</span>
+                    <span className="font-medium text-indigo-600">{name}</span>
                     {isSelf && <span className="ml-2 text-xs text-blue-600">(You)</span>}
                     {isHost && (
                         <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-800 rounded">

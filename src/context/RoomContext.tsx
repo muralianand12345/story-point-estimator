@@ -54,6 +54,11 @@ const generateUserId = () => {
     return Math.random().toString(36).substring(2, 15);
 };
 
+// Format room ID consistently
+const formatRoomId = (roomId: string): string => {
+    return roomId.trim().toUpperCase();
+};
+
 export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [room, setRoom] = useState<Room | null>(null);
     const [userId, setUserId] = useState<string | null>(null);
@@ -119,7 +124,10 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Join an existing room
     const joinRoom = (roomId: string, participantName: string): boolean => {
-        const roomData = localStorage.getItem(`room_${roomId}`);
+        // Format the room ID consistently
+        const formattedRoomId = formatRoomId(roomId);
+
+        const roomData = localStorage.getItem(`room_${formattedRoomId}`);
         if (!roomData) return false;
 
         const existingRoom: Room = JSON.parse(roomData);
@@ -136,7 +144,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     p.id === userId ? { ...p, name: participantName } : p
                 );
                 const updatedRoom = { ...existingRoom, participants: updatedParticipants };
-                localStorage.setItem(`room_${roomId}`, JSON.stringify(updatedRoom));
+                localStorage.setItem(`room_${formattedRoomId}`, JSON.stringify(updatedRoom));
                 setRoom(updatedRoom);
             } else {
                 setRoom(existingRoom);
@@ -155,7 +163,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 participants: [...existingRoom.participants, newParticipant],
             };
 
-            localStorage.setItem(`room_${roomId}`, JSON.stringify(updatedRoom));
+            localStorage.setItem(`room_${formattedRoomId}`, JSON.stringify(updatedRoom));
             setRoom(updatedRoom);
         }
 
@@ -233,7 +241,10 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Check if a room exists
     const checkRoomExists = (roomId: string): boolean => {
-        const roomData = localStorage.getItem(`room_${roomId}`);
+        // Format the room ID consistently
+        const formattedRoomId = formatRoomId(roomId);
+
+        const roomData = localStorage.getItem(`room_${formattedRoomId}`);
         return !!roomData;
     };
 
