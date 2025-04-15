@@ -16,17 +16,29 @@ export default function RoomPage() {
     const router = useRouter();
     const roomId = params.id as string;
 
-    const { room, userId, joinRoom, submitVote, revealVotes, resetVotes, checkRoomExists } = useRoom();
+    const { room, userId, joinRoom, submitVote, revealVotes, resetVotes, checkRoomExists, refreshRoom } = useRoom();
     const [selectedVote, setSelectedVote] = useState<string | null>(null);
+    // State to track client-side rendering
+    const [isClient, setIsClient] = useState(false);
 
-    // Check if user is in this room and if room exists
+    // Set isClient to true once mounted
     useEffect(() => {
-        if (!roomId) return;
+        setIsClient(true);
+    }, []);
 
-        // If not in this room or room doesn't exist, redirect to home
-        if (!room || room.id !== roomId || !checkRoomExists(roomId)) {
+    // Check if user is in this room and if room exists - only run on client
+    useEffect(() => {
+        if (!roomId || !isClient) return;
+
+        // If room doesn't exist, redirect to home
+        if (!checkRoomExists(roomId)) {
             router.push('/');
             return;
+        }
+
+        // If not in this room, refresh room data
+        if (!room || room.id !== roomId) {
+            refreshRoom(roomId);
         }
 
         // Get current vote if any
@@ -36,13 +48,28 @@ export default function RoomPage() {
                 setSelectedVote(participant.vote);
             }
         }
-    }, [room, userId, roomId, router, checkRoomExists]);
+    }, [room, userId, roomId, router, checkRoomExists, refreshRoom, isClient]);
 
-    // If not in a room, show loading screen
-    if (!room || room.id !== roomId) {
+    // Set up periodic refresh - only run on client
+    useEffect(() => {
+        if (!roomId || !isClient) return;
+
+        // Initial refresh
+        refreshRoom(roomId);
+
+        // Set up interval for periodic refresh
+        const intervalId = setInterval(() => {
+            refreshRoom(roomId);
+        }, 5000); // Every 5 seconds
+
+        return () => clearInterval(intervalId);
+    }, [roomId, refreshRoom, isClient]);
+
+    // If not fully loaded or not in a room, show loading screen
+    if (!isClient || !room || room.id !== roomId) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <p>Loading...</p>
+                <p>Loading room data...</p>
             </div>
         );
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '../components/Header';
 import Card from '../components/Card';
@@ -11,6 +11,7 @@ import { useRoom } from '../context/RoomContext';
 export default function Home() {
     const router = useRouter();
     const { createRoom, joinRoom, checkRoomExists } = useRoom();
+    const [isClient, setIsClient] = useState(false);
 
     const [roomId, setRoomId] = useState('');
     const [name, setName] = useState('');
@@ -19,6 +20,11 @@ export default function Home() {
     const [roomName, setRoomName] = useState('');
     const [roomDescription, setRoomDescription] = useState('');
     const [hostName, setHostName] = useState('');
+
+    // Set client-side flag after hydration
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
 
     const handleJoinRoom = (e: React.FormEvent) => {
         e.preventDefault();
@@ -83,7 +89,10 @@ export default function Home() {
                     {/* Join Room */}
                     <Card>
                         <h2 className="text-2xl font-bold text-gray-900 mb-6">Join a Room</h2>
-                        <form onSubmit={handleJoinRoom}>
+                        <form
+                            onSubmit={handleJoinRoom}
+                            suppressHydrationWarning
+                        >
                             <Input
                                 id="join-room-id"
                                 label="Room Code"
@@ -112,7 +121,10 @@ export default function Home() {
                     {/* Create Room */}
                     <Card>
                         <h2 className="text-2xl font-bold text-gray-900 mb-6">Create a Room</h2>
-                        <form onSubmit={handleCreateRoom}>
+                        <form
+                            onSubmit={handleCreateRoom}
+                            suppressHydrationWarning
+                        >
                             <Input
                                 id="create-name"
                                 label="Your Name"

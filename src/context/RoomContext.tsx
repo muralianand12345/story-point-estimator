@@ -31,6 +31,7 @@ interface RoomContextType {
     revealVotes: () => void;
     resetVotes: () => void;
     checkRoomExists: (roomId: string) => boolean;
+    refreshRoom: (roomId: string) => void;
 }
 
 // Create context with default values
@@ -44,6 +45,7 @@ const RoomContext = createContext<RoomContextType>({
     revealVotes: () => { },
     resetVotes: () => { },
     checkRoomExists: () => false,
+    refreshRoom: () => { },
 });
 
 // Default voting options based on Fibonacci sequence
@@ -62,9 +64,18 @@ const formatRoomId = (roomId: string): string => {
 export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [room, setRoom] = useState<Room | null>(null);
     const [userId, setUserId] = useState<string | null>(null);
+    // This flag helps prevent hydration mismatches
+    const [isClient, setIsClient] = useState(false);
 
-    // Load user ID from localStorage on initial render
+    // Set isClient to true once component mounts on client
     useEffect(() => {
+        setIsClient(true);
+    }, []);
+
+    // Load user ID from localStorage on initial render - only on client
+    useEffect(() => {
+        if (!isClient) return;
+
         const storedUserId = localStorage.getItem('userId');
         if (storedUserId) {
             setUserId(storedUserId);
@@ -77,21 +88,63 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Check if user was in a room
         const storedRoomData = localStorage.getItem('currentRoom');
         if (storedRoomData) {
-            setRoom(JSON.parse(storedRoomData));
+            try {
+                const parsedRoom = JSON.parse(storedRoomData);
+                // Verify the room still exists in localStorage
+                const roomStillExists = localStorage.getItem(`room_${parsedRoom.id}`);
+                if (roomStillExists) {
+                    // Get the latest room data
+                    setRoom(JSON.parse(roomStillExists));
+                } else {
+                    // Room was deleted
+                    localStorage.removeItem('currentRoom');
+                }
+            } catch (e) {
+                localStorage.removeItem('currentRoom');
+            }
         }
-    }, []);
+    }, [isClient]);
+
+    // Add a function to refresh room data from localStorage
+    const refreshRoom = (roomId: string) => {
+        if (!roomId || !isClient) return;
+
+        const formattedRoomId = formatRoomId(roomId);
+        const roomData = localStorage.getItem(`room_${formattedRoomId}`);
+
+        if (roomData) {
+            const latestRoom = JSON.parse(roomData);
+            setRoom(latestRoom);
+            localStorage.setItem('currentRoom', JSON.stringify(latestRoom));
+        }
+    };
+
+    // Set up an interval to refresh room data periodically
+    useEffect(() => {
+        if (!room || !isClient) return;
+
+        const intervalId = setInterval(() => {
+            refreshRoom(room.id);
+        }, 3000); // Refresh every 3 seconds
+
+        return () => clearInterval(intervalId);
+    }, [room, isClient]);
 
     // Save room data to localStorage whenever it changes
     useEffect(() => {
+        if (!isClient) return;
+
         if (room) {
             localStorage.setItem('currentRoom', JSON.stringify(room));
         } else {
             localStorage.removeItem('currentRoom');
         }
-    }, [room]);
+    }, [room, isClient]);
 
     // Create a new room
     const createRoom = (name: string, description: string, hostName: string): string => {
+        if (!isClient) return '';
+
         if (!userId) {
             const newUserId = generateUserId();
             setUserId(newUserId);
@@ -124,6 +177,8 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Join an existing room
     const joinRoom = (roomId: string, participantName: string): boolean => {
+        if (!isClient) return false;
+
         // Format the room ID consistently
         const formattedRoomId = formatRoomId(roomId);
 
@@ -155,7 +210,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 id: userId || generateUserId(),
                 name: participantName,
                 vote: null,
-                isHost: false,
+                isHost: false, // Always join as a non-host
             };
 
             const updatedRoom = {
@@ -172,7 +227,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Leave the current room
     const leaveRoom = () => {
-        if (!room || !userId) return;
+        if (!room || !userId || !isClient) return;
 
         // If user is host, we could handle room deletion differently
         const isHost = room.participants.find(p => p.id === userId)?.isHost;
@@ -192,45 +247,64 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Submit a vote
     const submitVote = (vote: string) => {
-        if (!room || !userId) return;
+        if (!room || !userId || !isClient) return;
 
-        const updatedParticipants = room.participants.map(participant =>
+        // Get the latest room data first
+        const latestRoomData = localStorage.getItem(`room_${room.id}`);
+        if (!latestRoomData) return;
+
+        const latestRoom: Room = JSON.parse(latestRoomData);
+
+        // Update the participant's vote
+        const updatedParticipants = latestRoom.participants.map(participant =>
             participant.id === userId ? { ...participant, vote } : participant
         );
 
-        const updatedRoom = { ...room, participants: updatedParticipants };
+        const updatedRoom = { ...latestRoom, participants: updatedParticipants };
         localStorage.setItem(`room_${room.id}`, JSON.stringify(updatedRoom));
         setRoom(updatedRoom);
     };
 
     // Reveal all votes
     const revealVotes = () => {
-        if (!room || !userId) return;
+        if (!room || !userId || !isClient) return;
 
         // Only the host can reveal votes
         const isHost = room.participants.find(p => p.id === userId)?.isHost;
         if (!isHost) return;
 
-        const updatedRoom = { ...room, isRevealed: true };
+        // Get the latest room data first
+        const latestRoomData = localStorage.getItem(`room_${room.id}`);
+        if (!latestRoomData) return;
+
+        const latestRoom: Room = JSON.parse(latestRoomData);
+
+        const updatedRoom = { ...latestRoom, isRevealed: true };
         localStorage.setItem(`room_${room.id}`, JSON.stringify(updatedRoom));
         setRoom(updatedRoom);
     };
 
     // Reset votes for a new round
     const resetVotes = () => {
-        if (!room || !userId) return;
+        if (!room || !userId || !isClient) return;
 
         // Only the host can reset votes
         const isHost = room.participants.find(p => p.id === userId)?.isHost;
         if (!isHost) return;
 
-        const updatedParticipants = room.participants.map(participant => ({
+        // Get the latest room data first
+        const latestRoomData = localStorage.getItem(`room_${room.id}`);
+        if (!latestRoomData) return;
+
+        const latestRoom: Room = JSON.parse(latestRoomData);
+
+        const updatedParticipants = latestRoom.participants.map(participant => ({
             ...participant,
             vote: null,
         }));
 
         const updatedRoom = {
-            ...room,
+            ...latestRoom,
             participants: updatedParticipants,
             isRevealed: false
         };
@@ -241,6 +315,8 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Check if a room exists
     const checkRoomExists = (roomId: string): boolean => {
+        if (!isClient) return false;
+
         // Format the room ID consistently
         const formattedRoomId = formatRoomId(roomId);
 
@@ -258,6 +334,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         revealVotes,
         resetVotes,
         checkRoomExists,
+        refreshRoom,
     };
 
     return <RoomContext.Provider value={contextValue}> {children} </RoomContext.Provider>;

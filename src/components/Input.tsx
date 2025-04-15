@@ -38,7 +38,8 @@ const Input: React.FC<InputProps> = ({
                 placeholder={placeholder}
                 required={required}
                 className={`w-full px-3 py-2 border ${error ? 'border-red-300' : 'border-gray-300'
-                    } rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-black`} // Added text-black
+                    } rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-black`}
+                suppressHydrationWarning // Add this prop to ignore hydration mismatches on this element
             />
             {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
         </div>

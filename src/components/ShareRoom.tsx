@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from './Button';
 import Card from './Card';
 
@@ -8,10 +8,12 @@ interface ShareRoomProps {
 
 const ShareRoom: React.FC<ShareRoomProps> = ({ roomId }) => {
     const [copied, setCopied] = useState(false);
+    const [roomLink, setRoomLink] = useState('');
 
-    const roomLink = typeof window !== 'undefined'
-        ? `${window.location.origin}/room/${roomId}`
-        : '';
+    // Move window access to useEffect to avoid hydration mismatch
+    useEffect(() => {
+        setRoomLink(`${window.location.origin}/room/${roomId}`);
+    }, [roomId]);
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(roomLink);

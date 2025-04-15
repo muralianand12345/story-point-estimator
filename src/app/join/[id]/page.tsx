@@ -14,7 +14,7 @@ export default function JoinPage() {
     const roomId = params.id as string;
     const formattedRoomId = roomId.trim().toUpperCase(); // Format the room ID
 
-    const { room, joinRoom, checkRoomExists } = useRoom();
+    const { room, joinRoom, checkRoomExists, refreshRoom } = useRoom();
     const [name, setName] = useState('');
     const [error, setError] = useState('');
     const [roomExists, setRoomExists] = useState(true);
@@ -22,6 +22,11 @@ export default function JoinPage() {
     // Check if room exists and if user is already in the room
     useEffect(() => {
         if (!formattedRoomId) return;
+
+        // First, refresh the room data
+        if (checkRoomExists(formattedRoomId)) {
+            refreshRoom(formattedRoomId);
+        }
 
         // If already in this room, redirect to room page
         if (room && room.id === formattedRoomId) {
@@ -32,7 +37,7 @@ export default function JoinPage() {
         // Check if room exists
         const exists = checkRoomExists(formattedRoomId);
         setRoomExists(exists);
-    }, [room, formattedRoomId, router, checkRoomExists]);
+    }, [room, formattedRoomId, router, checkRoomExists, refreshRoom]);
 
     const handleJoinRoom = (e: React.FormEvent) => {
         e.preventDefault();
@@ -47,6 +52,9 @@ export default function JoinPage() {
             setError('This room no longer exists');
             return;
         }
+
+        // Refresh the room data one more time before joining
+        refreshRoom(formattedRoomId);
 
         const success = joinRoom(formattedRoomId, name.trim());
         if (success) {
