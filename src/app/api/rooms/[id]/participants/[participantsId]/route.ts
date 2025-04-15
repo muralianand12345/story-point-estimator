@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { triggerRoomEvent, EVENTS } from '@/lib/pusher';
-import { getParamId } from '@/utils/apiUtils';
-import { IContext } from '@/types';
 
 // Submit a vote for a participant
 export async function PATCH(
     request: Request,
-    context: IContext
+    context: { params: { id: any; participantId: any } }
 ) {
     try {
-        const aparams = await context.params;
-        const roomId = await getParamId(aparams.id);
-        const participantId = await getParamId(aparams.participantId);
+        // Always await the params first, no type checking
+        const roomId = await context.params.id;
+        const participantId = await context.params.participantId;
 
         if (!roomId || !participantId) {
             return NextResponse.json(
@@ -62,12 +60,12 @@ export async function PATCH(
 // Remove a participant from a room
 export async function DELETE(
     request: Request,
-    context: IContext
+    context: { params: { id: any; participantId: any } }
 ) {
     try {
-        const aparams = await context.params;
-        const roomId = await getParamId(aparams.id);
-        const participantId = await getParamId(aparams.participantId);
+        // Always await the params first, no type checking
+        const roomId = await context.params.id;
+        const participantId = await context.params.participantId;
 
         if (!roomId || !participantId) {
             return NextResponse.json(

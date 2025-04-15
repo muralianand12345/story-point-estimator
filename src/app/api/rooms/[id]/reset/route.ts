@@ -1,17 +1,15 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { triggerRoomEvent, EVENTS } from '@/lib/pusher';
-import { getParamId } from '@/utils/apiUtils';
-import { IContext } from '@/types';
 
 // Reset all votes in a room
 export async function POST(
     request: Request,
-    context: IContext
+    context: { params: { id: any } }
 ) {
     try {
-        const aparams = await context.params;
-        const roomId = await getParamId(aparams.id);
+        // Always await the params.id first, no type checking
+        const roomId = await context.params.id;
 
         if (!roomId) {
             return NextResponse.json(

@@ -1,6 +1,6 @@
 export interface IContext {
     params: {
-        id: string | Promise<string>;
-        participantId: string | Promise<string>;
+        id: Promise<string>;
+        participantId?: Promise<string>;
     };
 }

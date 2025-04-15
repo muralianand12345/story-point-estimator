@@ -1,17 +1,15 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { triggerRoomEvent, EVENTS } from '@/lib/pusher';
-import { getParamId } from '@/utils/apiUtils';
-import { IContext } from '@/types';
 
 // Get a specific room by ID
 export async function GET(
     request: Request,
-    context: IContext
+    context: { params: { id: any } }
 ) {
     try {
-        const aparams = await context.params;
-        const roomId = await getParamId(aparams.id);
+        // Always await the params.id first, no type checking
+        const roomId = await context.params.id;
 
         if (!roomId) {
             return NextResponse.json(
@@ -49,11 +47,11 @@ export async function GET(
 // Update room properties
 export async function PATCH(
     request: Request,
-    context: IContext
+    context: { params: { id: any } }
 ) {
     try {
-        const aparams = await context.params;
-        const roomId = await getParamId(aparams.id);
+        // Always await the params.id first, no type checking
+        const roomId = await context.params.id;
 
         if (!roomId) {
             return NextResponse.json(
@@ -96,11 +94,11 @@ export async function PATCH(
 // Delete a room
 export async function DELETE(
     request: Request,
-    context: IContext
+    context: { params: { id: any } }
 ) {
     try {
-        const aparams = await context.params;
-        const roomId = await getParamId(aparams.id);
+        // Always await the params.id first, no type checking
+        const roomId = await context.params.id;
 
         if (!roomId) {
             return NextResponse.json(

@@ -1,17 +1,13 @@
-const isPromise = <T>(value: any): value is Promise<T> => {
-    return Boolean(value && typeof value.then === 'function');
-};
-
-const getParamId = async (param: string | Promise<string> | undefined | null): Promise<string | null> => {
+export const getParamId = async (param: Promise<string> | string | undefined | null): Promise<string | null> => {
     if (param === null || param === undefined) {
         return null;
     }
 
-    if (isPromise<string>(param)) {
-        return await param;
+    try {
+        // Handle both Promise<string> and string
+        return param instanceof Promise ? await param : param;
+    } catch (error) {
+        console.error("Error resolving param:", error);
+        return null;
     }
-
-    return param;
 };
-
-export { getParamId, isPromise };
