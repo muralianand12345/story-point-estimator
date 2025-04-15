@@ -24,7 +24,6 @@ export default function RoomPage() {
 
 	const {
 		room,
-		userId,
 		participantId,
 		submitVote,
 		revealVotes,
@@ -129,7 +128,7 @@ export default function RoomPage() {
 					<Card>
 						<h1 className="text-xl font-bold text-gray-900 mb-4">Room Not Found</h1>
 						<p className="text-gray-600 mb-6">
-							The room you're trying to access doesn't exist or has been closed.
+							The room you&apos;re trying to access doesn&apos;t exist or has been closed.
 						</p>
 						<Button onClick={() => router.push('/')} fullWidth>
 							Back to Home
@@ -149,7 +148,7 @@ export default function RoomPage() {
 					<Card>
 						<h1 className="text-xl font-bold text-gray-900 mb-4">Connection Issue</h1>
 						<p className="text-gray-600 mb-6">
-							You're not properly connected to this room. Please try joining again.
+							You&apos;re not properly connected to this room. Please try joining again.
 						</p>
 						<Button onClick={() => router.push(`/join/${roomId}`)} fullWidth>
 							Rejoin Room

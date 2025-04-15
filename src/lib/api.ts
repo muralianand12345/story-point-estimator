@@ -193,7 +193,7 @@ export async function checkRoomExists(roomId: string): Promise<boolean> {
     try {
         const room = await getRoom(roomId);
         return !!room;
-    } catch (error) {
+    } catch (_) {
         return false;
     }
 }

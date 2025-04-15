@@ -2,12 +2,10 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
 // Get a specific room by ID
-export async function GET(request: Request, context: { params: { id: any } }) {
+export async function GET(request: Request, context: { params: { id: string } }) {
 	try {
-		// First await the entire params object
-		const params = await context.params;
-		// Then extract the ID
-		const roomId = params.id;
+		// Extract the ID
+		const roomId = context.params.id;
 
 		if (!roomId) {
 			return NextResponse.json({ error: 'Invalid room ID' }, { status: 400 });
@@ -39,13 +37,11 @@ export async function GET(request: Request, context: { params: { id: any } }) {
 // Update room properties
 export async function PATCH(
 	request: Request,
-	context: { params: { id: any } },
+	context: { params: { id: string } },
 ) {
 	try {
-		// First await the entire params object
-		const params = await context.params;
-		// Then extract the ID
-		const roomId = params.id;
+		// Extract the ID
+		const roomId = context.params.id;
 
 		if (!roomId) {
 			return NextResponse.json({ error: 'Invalid room ID' }, { status: 400 });
@@ -79,13 +75,11 @@ export async function PATCH(
 // Delete a room
 export async function DELETE(
 	request: Request,
-	context: { params: { id: any } },
+	context: { params: { id: string } },
 ) {
 	try {
-		// First await the entire params object
-		const params = await context.params;
-		// Then extract the ID
-		const roomId = params.id;
+		// Extract the ID
+		const roomId = context.params.id;
 
 		if (!roomId) {
 			return NextResponse.json({ error: 'Invalid room ID' }, { status: 400 });

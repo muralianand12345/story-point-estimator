@@ -11,7 +11,7 @@ import { useRoom } from '../context/RoomContext';
 export default function Home() {
 	const router = useRouter();
 	const { createRoom, joinRoom, checkRoomExists } = useRoom();
-	const [isClient, setIsClient] = useState(false);
+	const [, setIsClient] = useState(false);
 
 	const [roomId, setRoomId] = useState('');
 	const [name, setName] = useState('');

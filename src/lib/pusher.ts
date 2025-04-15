@@ -13,11 +13,10 @@ export const EVENTS = {
 
 // No-op function to replace the pusher trigger
 export const triggerRoomEvent = (
-    roomId: string,
-    event: string,
-    data: any
+    _roomId: string,
+    _event: string,
+    _data: Record<string, unknown>
 ): void => {
-    // This function does nothing - we're using polling instead
     return;
 };
 

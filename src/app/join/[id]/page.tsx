@@ -88,7 +88,7 @@ export default function JoinPage() {
                     <Card>
                         <h1 className="text-xl font-bold text-gray-900 mb-4">Room Not Found</h1>
                         <p className="text-gray-600 mb-6">
-                            The room you're trying to join no longer exists or has been closed by the host.
+                            The room you&apos;re trying to join no longer exists or has been closed by the host.
                         </p>
                         <Button onClick={() => router.push('/')} fullWidth>
                             Back to Home
@@ -107,7 +107,7 @@ export default function JoinPage() {
                 <Card>
                     <h1 className="text-xl font-bold text-gray-900 mb-4">Join Room</h1>
                     <p className="text-gray-600 mb-6">
-                        You're joining room: <span className="font-mono font-medium">{formattedRoomId}</span>
+                        You&apos;re joining room: <span className="font-mono font-medium">{formattedRoomId}</span>
                     </p>
 
                     <form onSubmit={handleJoinRoom}>
