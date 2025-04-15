@@ -14,7 +14,7 @@ import Button from '../../../components/Button';
 export default function RoomPage() {
     const params = useParams();
     const router = useRouter();
-    const roomId = params.id as string;
+    const roomId = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : '';
 
     const { room, userId, joinRoom, submitVote, revealVotes, resetVotes, checkRoomExists, refreshRoom } = useRoom();
     const [selectedVote, setSelectedVote] = useState<string | null>(null);

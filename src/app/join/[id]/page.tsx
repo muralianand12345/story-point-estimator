@@ -11,7 +11,7 @@ import { useRoom } from '../../../context/RoomContext';
 export default function JoinPage() {
     const params = useParams();
     const router = useRouter();
-    const roomId = params.id as string;
+    const roomId = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : '';
     const formattedRoomId = roomId.trim().toUpperCase(); // Format the room ID
 
     const { room, joinRoom, checkRoomExists, refreshRoom } = useRoom();
@@ -34,19 +34,23 @@ export default function JoinPage() {
             return;
         }
 
-        // Check if room exists
-        const exists = checkRoomExists(formattedRoomId);
-        setRoomExists(exists);
+        // Need to use an async function inside useEffect
+        const checkRoom = async () => {
+            // Check if room exists
+            const exists = await checkRoomExists(formattedRoomId);
+            setRoomExists(exists);
 
-        // Only refresh if the room exists
-        if (exists) {
-            refreshRoom(formattedRoomId);
-        }
+            // Only refresh if the room exists
+            if (exists) {
+                await refreshRoom(formattedRoomId);
+            }
+        };
 
+        checkRoom();
         initialCheckDone.current = true;
     }, [room, formattedRoomId, router, checkRoomExists, refreshRoom]);
 
-    const handleJoinRoom = (e: React.FormEvent) => {
+    const handleJoinRoom = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
@@ -60,7 +64,7 @@ export default function JoinPage() {
             return;
         }
 
-        const success = joinRoom(formattedRoomId, name.trim());
+        const success = await joinRoom(formattedRoomId, name.trim());
         if (success) {
             router.push(`/room/${formattedRoomId}`);
         } else {

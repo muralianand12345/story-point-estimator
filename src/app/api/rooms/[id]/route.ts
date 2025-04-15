@@ -5,10 +5,10 @@ import { triggerRoomEvent, EVENTS } from '@/lib/pusher';
 // Get a specific room by ID
 export async function GET(
     request: Request,
-    { params }: { params: { id: string } }
+    context: { params: { id: string } }
 ) {
     try {
-        const roomId = params.id;
+        const { id: roomId } = context.params;
 
         const room = await prisma.room.findUnique({
             where: {
@@ -39,10 +39,10 @@ export async function GET(
 // Update room properties
 export async function PATCH(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: { id: Promise<string> } }
 ) {
     try {
-        const roomId = params.id;
+        const roomId = await params.id;
         const body = await request.json();
         const { isRevealed } = body;
 
@@ -77,10 +77,10 @@ export async function PATCH(
 // Delete a room
 export async function DELETE(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: { id: Promise<string> } }
 ) {
     try {
-        const roomId = params.id;
+        const roomId = await params.id;
 
         await prisma.room.delete({
             where: {
