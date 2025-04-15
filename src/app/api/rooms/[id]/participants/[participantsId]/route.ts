@@ -1,14 +1,25 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { triggerRoomEvent, EVENTS } from '@/lib/pusher';
+import { getParamId } from '@/utils/apiUtils';
+import { IContext } from '@/types';
 
 // Submit a vote for a participant
 export async function PATCH(
     request: Request,
-    { params }: { params: { id: string; participantId: string } }
+    context: IContext
 ) {
     try {
-        const { id: roomId, participantId } = params;
+        const roomId = await getParamId(context.params?.id);
+        const participantId = await getParamId(context.params?.participantId);
+
+        if (!roomId || !participantId) {
+            return NextResponse.json(
+                { error: 'Invalid room or participant ID' },
+                { status: 400 }
+            );
+        }
+
         const body = await request.json();
         const { vote } = body;
 
@@ -33,7 +44,9 @@ export async function PATCH(
             },
         });
 
-        triggerRoomEvent(roomId, EVENTS.VOTE_SUBMITTED, updatedRoom);
+        if (updatedRoom) {
+            triggerRoomEvent(roomId, EVENTS.VOTE_SUBMITTED, updatedRoom);
+        }
 
         return NextResponse.json(updatedRoom);
     } catch (error) {
@@ -48,10 +61,18 @@ export async function PATCH(
 // Remove a participant from a room
 export async function DELETE(
     request: Request,
-    { params }: { params: { id: string; participantId: string } }
+    context: IContext
 ) {
     try {
-        const { id: roomId, participantId } = params;
+        const roomId = await getParamId(context.params?.id);
+        const participantId = await getParamId(context.params?.participantId);
+
+        if (!roomId || !participantId) {
+            return NextResponse.json(
+                { error: 'Invalid room or participant ID' },
+                { status: 400 }
+            );
+        }
 
         // Delete the participant
         await prisma.participant.delete({
@@ -82,7 +103,7 @@ export async function DELETE(
         }
 
         // If host was removed, assign a new host
-        const hasHost = remainingParticipants.some((p: any) => p.isHost);
+        const hasHost = remainingParticipants.some((p: { isHost: boolean }) => p.isHost);
         if (!hasHost && remainingParticipants.length > 0) {
             await prisma.participant.update({
                 where: {

@@ -1,14 +1,23 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { triggerRoomEvent, EVENTS } from '@/lib/pusher';
+import { getParamId } from '@/utils/apiUtils';
+import { IContext } from '@/types';
 
 // Reset all votes in a room
 export async function POST(
     request: Request,
-    { params }: { params: { id: string } }
+    context: IContext
 ) {
     try {
-        const roomId = params.id;
+        const roomId = await getParamId(context.params?.id);
+
+        if (!roomId) {
+            return NextResponse.json(
+                { error: 'Invalid room ID' },
+                { status: 400 }
+            );
+        }
 
         // Reset votes for all participants and set isRevealed to false
         await prisma.room.update({
@@ -40,7 +49,9 @@ export async function POST(
             },
         });
 
-        triggerRoomEvent(roomId, EVENTS.VOTES_RESET, updatedRoom);
+        if (updatedRoom) {
+            triggerRoomEvent(roomId, EVENTS.VOTES_RESET, updatedRoom);
+        }
 
         return NextResponse.json(updatedRoom);
     } catch (error) {

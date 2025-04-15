@@ -1,14 +1,24 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { triggerRoomEvent, EVENTS } from '@/lib/pusher';
+import { getParamId } from '@/utils/apiUtils';
+import { IContext } from '@/types';
 
 // Add a participant to a room
 export async function POST(
     request: Request,
-    { params }: { params: { id: string } }
+    context: IContext
 ) {
     try {
-        const roomId = params.id;
+        const roomId = await getParamId(context.params?.id);
+
+        if (!roomId) {
+            return NextResponse.json(
+                { error: 'Invalid room ID' },
+                { status: 400 }
+            );
+        }
+
         const body = await request.json();
         const { name } = body;
 
@@ -51,10 +61,12 @@ export async function POST(
             },
         });
 
-        triggerRoomEvent(roomId, EVENTS.PARTICIPANT_JOINED, {
-            participant,
-            room: updatedRoom,
-        });
+        if (updatedRoom) {
+            triggerRoomEvent(roomId, EVENTS.PARTICIPANT_JOINED, {
+                participant,
+                room: updatedRoom,
+            });
+        }
 
         return NextResponse.json({
             participant,

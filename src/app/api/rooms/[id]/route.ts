@@ -1,14 +1,23 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { triggerRoomEvent, EVENTS } from '@/lib/pusher';
+import { getParamId } from '@/utils/apiUtils';
+import { IContext } from '@/types';
 
 // Get a specific room by ID
 export async function GET(
     request: Request,
-    context: { params: { id: string } }
+    context: IContext
 ) {
     try {
-        const { id: roomId } = context.params;
+        const roomId = await getParamId(context.params?.id);
+
+        if (!roomId) {
+            return NextResponse.json(
+                { error: 'Invalid room ID' },
+                { status: 400 }
+            );
+        }
 
         const room = await prisma.room.findUnique({
             where: {
@@ -39,10 +48,18 @@ export async function GET(
 // Update room properties
 export async function PATCH(
     request: Request,
-    { params }: { params: { id: Promise<string> } }
+    context: IContext
 ) {
     try {
-        const roomId = await params.id;
+        const roomId = await getParamId(context.params?.id);
+
+        if (!roomId) {
+            return NextResponse.json(
+                { error: 'Invalid room ID' },
+                { status: 400 }
+            );
+        }
+
         const body = await request.json();
         const { isRevealed } = body;
 
@@ -77,10 +94,17 @@ export async function PATCH(
 // Delete a room
 export async function DELETE(
     request: Request,
-    { params }: { params: { id: Promise<string> } }
+    context: IContext
 ) {
     try {
-        const roomId = await params.id;
+        const roomId = await getParamId(context.params?.id);
+
+        if (!roomId) {
+            return NextResponse.json(
+                { error: 'Invalid room ID' },
+                { status: 400 }
+            );
+        }
 
         await prisma.room.delete({
             where: {
