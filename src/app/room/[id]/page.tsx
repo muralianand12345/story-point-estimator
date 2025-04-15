@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useRoom } from '../../../context/RoomContext';
 import Header from '../../../components/Header';
@@ -20,6 +20,10 @@ export default function RoomPage() {
     const [selectedVote, setSelectedVote] = useState<string | null>(null);
     // State to track client-side rendering
     const [isClient, setIsClient] = useState(false);
+    // Use ref to track if initial setup is done
+    const initialSetupDone = useRef(false);
+    // Use ref to track last refresh time to prevent excessive refreshes
+    const lastRefreshTime = useRef(0);
 
     // Set isClient to true once mounted
     useEffect(() => {
@@ -29,6 +33,9 @@ export default function RoomPage() {
     // Check if user is in this room and if room exists - only run on client
     useEffect(() => {
         if (!roomId || !isClient) return;
+
+        // Prevent this effect from running multiple times
+        if (initialSetupDone.current) return;
 
         // If room doesn't exist, redirect to home
         if (!checkRoomExists(roomId)) {
@@ -41,25 +48,37 @@ export default function RoomPage() {
             refreshRoom(roomId);
         }
 
-        // Get current vote if any
+        initialSetupDone.current = true;
+    }, [room, userId, roomId, router, checkRoomExists, refreshRoom, isClient]);
+
+    // Update selected vote when room changes
+    useEffect(() => {
         if (room && userId) {
             const participant = room.participants.find(p => p.id === userId);
             if (participant && participant.vote) {
                 setSelectedVote(participant.vote);
+            } else if (room.isRevealed === false) {
+                // Reset selected vote when a new round starts
+                setSelectedVote(null);
             }
         }
-    }, [room, userId, roomId, router, checkRoomExists, refreshRoom, isClient]);
+    }, [room, userId]);
 
     // Set up periodic refresh - only run on client
     useEffect(() => {
         if (!roomId || !isClient) return;
 
-        // Initial refresh
-        refreshRoom(roomId);
+        // Initial refresh if not done recently
+        const now = Date.now();
+        if (now - lastRefreshTime.current > 2000) {
+            refreshRoom(roomId);
+            lastRefreshTime.current = now;
+        }
 
         // Set up interval for periodic refresh
         const intervalId = setInterval(() => {
             refreshRoom(roomId);
+            lastRefreshTime.current = Date.now();
         }, 5000); // Every 5 seconds
 
         return () => clearInterval(intervalId);

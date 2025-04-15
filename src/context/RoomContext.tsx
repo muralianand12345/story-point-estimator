@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { generateRoomCode } from '../utils/roomUtils';
 
 // Define types
@@ -66,6 +66,8 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [userId, setUserId] = useState<string | null>(null);
     // This flag helps prevent hydration mismatches
     const [isClient, setIsClient] = useState(false);
+    // Use ref to track the current room ID to avoid dependency issues
+    const currentRoomIdRef = useRef<string | null>(null);
 
     // Set isClient to true once component mounts on client
     useEffect(() => {
@@ -94,7 +96,9 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const roomStillExists = localStorage.getItem(`room_${parsedRoom.id}`);
                 if (roomStillExists) {
                     // Get the latest room data
-                    setRoom(JSON.parse(roomStillExists));
+                    const latestRoom = JSON.parse(roomStillExists);
+                    setRoom(latestRoom);
+                    currentRoomIdRef.current = latestRoom.id;
                 } else {
                     // Room was deleted
                     localStorage.removeItem('currentRoom');
@@ -113,22 +117,43 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const roomData = localStorage.getItem(`room_${formattedRoomId}`);
 
         if (roomData) {
-            const latestRoom = JSON.parse(roomData);
-            setRoom(latestRoom);
-            localStorage.setItem('currentRoom', JSON.stringify(latestRoom));
+            try {
+                const latestRoom = JSON.parse(roomData);
+                setRoom(latestRoom);
+                localStorage.setItem('currentRoom', JSON.stringify(latestRoom));
+                currentRoomIdRef.current = latestRoom.id;
+            } catch (e) {
+                console.error('Error parsing room data:', e);
+            }
         }
     };
 
     // Set up an interval to refresh room data periodically
     useEffect(() => {
-        if (!room || !isClient) return;
+        if (!isClient) return;
 
+        // Only set up interval if room exists
+        if (!currentRoomIdRef.current) return;
+
+        const roomId = currentRoomIdRef.current;
         const intervalId = setInterval(() => {
-            refreshRoom(room.id);
+            // Use the ref instead of the state to avoid dependency issues
+            const currentRoomId = currentRoomIdRef.current;
+            if (currentRoomId) {
+                const roomData = localStorage.getItem(`room_${currentRoomId}`);
+                if (roomData) {
+                    try {
+                        const latestRoom = JSON.parse(roomData);
+                        setRoom(latestRoom);
+                    } catch (e) {
+                        console.error('Error refreshing room data:', e);
+                    }
+                }
+            }
         }, 3000); // Refresh every 3 seconds
 
         return () => clearInterval(intervalId);
-    }, [room, isClient]);
+    }, [isClient]); // Only depend on isClient, not on room
 
     // Save room data to localStorage whenever it changes
     useEffect(() => {
@@ -136,8 +161,10 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (room) {
             localStorage.setItem('currentRoom', JSON.stringify(room));
+            currentRoomIdRef.current = room.id;
         } else {
             localStorage.removeItem('currentRoom');
+            currentRoomIdRef.current = null;
         }
     }, [room, isClient]);
 
@@ -172,6 +199,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Save to localStorage
         localStorage.setItem(`room_${roomId}`, JSON.stringify(newRoom));
         setRoom(newRoom);
+        currentRoomIdRef.current = roomId;
         return roomId;
     };
 
@@ -201,8 +229,10 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const updatedRoom = { ...existingRoom, participants: updatedParticipants };
                 localStorage.setItem(`room_${formattedRoomId}`, JSON.stringify(updatedRoom));
                 setRoom(updatedRoom);
+                currentRoomIdRef.current = formattedRoomId;
             } else {
                 setRoom(existingRoom);
+                currentRoomIdRef.current = formattedRoomId;
             }
         } else {
             // New participant joining
@@ -220,6 +250,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             localStorage.setItem(`room_${formattedRoomId}`, JSON.stringify(updatedRoom));
             setRoom(updatedRoom);
+            currentRoomIdRef.current = formattedRoomId;
         }
 
         return true;
@@ -243,6 +274,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         setRoom(null);
+        currentRoomIdRef.current = null;
     };
 
     // Submit a vote
@@ -253,16 +285,20 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const latestRoomData = localStorage.getItem(`room_${room.id}`);
         if (!latestRoomData) return;
 
-        const latestRoom: Room = JSON.parse(latestRoomData);
+        try {
+            const latestRoom: Room = JSON.parse(latestRoomData);
 
-        // Update the participant's vote
-        const updatedParticipants = latestRoom.participants.map(participant =>
-            participant.id === userId ? { ...participant, vote } : participant
-        );
+            // Update the participant's vote
+            const updatedParticipants = latestRoom.participants.map(participant =>
+                participant.id === userId ? { ...participant, vote } : participant
+            );
 
-        const updatedRoom = { ...latestRoom, participants: updatedParticipants };
-        localStorage.setItem(`room_${room.id}`, JSON.stringify(updatedRoom));
-        setRoom(updatedRoom);
+            const updatedRoom = { ...latestRoom, participants: updatedParticipants };
+            localStorage.setItem(`room_${room.id}`, JSON.stringify(updatedRoom));
+            setRoom(updatedRoom);
+        } catch (e) {
+            console.error('Error submitting vote:', e);
+        }
     };
 
     // Reveal all votes
@@ -277,11 +313,15 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const latestRoomData = localStorage.getItem(`room_${room.id}`);
         if (!latestRoomData) return;
 
-        const latestRoom: Room = JSON.parse(latestRoomData);
+        try {
+            const latestRoom: Room = JSON.parse(latestRoomData);
 
-        const updatedRoom = { ...latestRoom, isRevealed: true };
-        localStorage.setItem(`room_${room.id}`, JSON.stringify(updatedRoom));
-        setRoom(updatedRoom);
+            const updatedRoom = { ...latestRoom, isRevealed: true };
+            localStorage.setItem(`room_${room.id}`, JSON.stringify(updatedRoom));
+            setRoom(updatedRoom);
+        } catch (e) {
+            console.error('Error revealing votes:', e);
+        }
     };
 
     // Reset votes for a new round
@@ -296,21 +336,25 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const latestRoomData = localStorage.getItem(`room_${room.id}`);
         if (!latestRoomData) return;
 
-        const latestRoom: Room = JSON.parse(latestRoomData);
+        try {
+            const latestRoom: Room = JSON.parse(latestRoomData);
 
-        const updatedParticipants = latestRoom.participants.map(participant => ({
-            ...participant,
-            vote: null,
-        }));
+            const updatedParticipants = latestRoom.participants.map(participant => ({
+                ...participant,
+                vote: null,
+            }));
 
-        const updatedRoom = {
-            ...latestRoom,
-            participants: updatedParticipants,
-            isRevealed: false
-        };
+            const updatedRoom = {
+                ...latestRoom,
+                participants: updatedParticipants,
+                isRevealed: false
+            };
 
-        localStorage.setItem(`room_${room.id}`, JSON.stringify(updatedRoom));
-        setRoom(updatedRoom);
+            localStorage.setItem(`room_${room.id}`, JSON.stringify(updatedRoom));
+            setRoom(updatedRoom);
+        } catch (e) {
+            console.error('Error resetting votes:', e);
+        }
     };
 
     // Check if a room exists

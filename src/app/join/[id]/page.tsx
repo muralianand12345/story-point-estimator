@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Header from '../../../components/Header';
 import Card from '../../../components/Card';
@@ -18,15 +18,15 @@ export default function JoinPage() {
     const [name, setName] = useState('');
     const [error, setError] = useState('');
     const [roomExists, setRoomExists] = useState(true);
+    // Use ref to track initialization status
+    const initialCheckDone = useRef(false);
 
     // Check if room exists and if user is already in the room
     useEffect(() => {
         if (!formattedRoomId) return;
 
-        // First, refresh the room data
-        if (checkRoomExists(formattedRoomId)) {
-            refreshRoom(formattedRoomId);
-        }
+        // Prevent multiple executions of this effect
+        if (initialCheckDone.current) return;
 
         // If already in this room, redirect to room page
         if (room && room.id === formattedRoomId) {
@@ -37,6 +37,13 @@ export default function JoinPage() {
         // Check if room exists
         const exists = checkRoomExists(formattedRoomId);
         setRoomExists(exists);
+
+        // Only refresh if the room exists
+        if (exists) {
+            refreshRoom(formattedRoomId);
+        }
+
+        initialCheckDone.current = true;
     }, [room, formattedRoomId, router, checkRoomExists, refreshRoom]);
 
     const handleJoinRoom = (e: React.FormEvent) => {
@@ -52,9 +59,6 @@ export default function JoinPage() {
             setError('This room no longer exists');
             return;
         }
-
-        // Refresh the room data one more time before joining
-        refreshRoom(formattedRoomId);
 
         const success = joinRoom(formattedRoomId, name.trim());
         if (success) {
