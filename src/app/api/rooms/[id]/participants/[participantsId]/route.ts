@@ -10,8 +10,9 @@ export async function PATCH(
     context: IContext
 ) {
     try {
-        const roomId = await getParamId(context.params?.id);
-        const participantId = await getParamId(context.params?.participantId);
+        const aparams = await context.params;
+        const roomId = await getParamId(aparams.id);
+        const participantId = await getParamId(aparams.participantId);
 
         if (!roomId || !participantId) {
             return NextResponse.json(
@@ -64,8 +65,9 @@ export async function DELETE(
     context: IContext
 ) {
     try {
-        const roomId = await getParamId(context.params?.id);
-        const participantId = await getParamId(context.params?.participantId);
+        const aparams = await context.params;
+        const roomId = await getParamId(aparams.id);
+        const participantId = await getParamId(aparams.participantId);
 
         if (!roomId || !participantId) {
             return NextResponse.json(

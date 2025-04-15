@@ -10,7 +10,8 @@ export async function POST(
     context: IContext
 ) {
     try {
-        const roomId = await getParamId(context.params?.id);
+        const aparams = await context.params;
+        const roomId = await getParamId(aparams.id);
 
         if (!roomId) {
             return NextResponse.json(

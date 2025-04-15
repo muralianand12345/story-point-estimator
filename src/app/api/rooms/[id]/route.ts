@@ -10,7 +10,8 @@ export async function GET(
     context: IContext
 ) {
     try {
-        const roomId = await getParamId(context.params?.id);
+        const aparams = await context.params;
+        const roomId = await getParamId(aparams.id);
 
         if (!roomId) {
             return NextResponse.json(
@@ -51,7 +52,8 @@ export async function PATCH(
     context: IContext
 ) {
     try {
-        const roomId = await getParamId(context.params?.id);
+        const aparams = await context.params;
+        const roomId = await getParamId(aparams.id);
 
         if (!roomId) {
             return NextResponse.json(
@@ -97,7 +99,8 @@ export async function DELETE(
     context: IContext
 ) {
     try {
-        const roomId = await getParamId(context.params?.id);
+        const aparams = await context.params;
+        const roomId = await getParamId(aparams.id);
 
         if (!roomId) {
             return NextResponse.json(
