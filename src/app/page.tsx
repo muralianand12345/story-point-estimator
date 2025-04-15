@@ -20,6 +20,7 @@ export default function Home() {
 	const [roomName, setRoomName] = useState('');
 	const [roomDescription, setRoomDescription] = useState('');
 	const [hostName, setHostName] = useState('');
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	// Set client-side flag after hydration
 	useEffect(() => {
@@ -29,52 +30,70 @@ export default function Home() {
 	const handleJoinRoom = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setJoinError('');
+		setIsSubmitting(true);
 
-		if (!name.trim()) {
-			setJoinError('Please enter your name');
-			return;
-		}
+		try {
+			if (!name.trim()) {
+				setJoinError('Please enter your name');
+				return;
+			}
 
-		// Format the room ID: trim whitespace and convert to uppercase
-		const formattedRoomId = roomId.trim().toUpperCase();
+			// Format the room ID: trim whitespace and convert to uppercase
+			const formattedRoomId = roomId.trim().toUpperCase();
 
-		if (!formattedRoomId) {
-			setJoinError('Please enter a room code');
-			return;
-		}
+			if (!formattedRoomId) {
+				setJoinError('Please enter a room code');
+				return;
+			}
 
-		// Check if room exists
-		if (!checkRoomExists(formattedRoomId)) {
-			setJoinError('Room not found. Please check the room code');
-			return;
-		}
+			// Check if room exists
+			const roomExists = await checkRoomExists(formattedRoomId);
+			if (!roomExists) {
+				setJoinError('Room not found. Please check the room code');
+				return;
+			}
 
-		// Join the room
-		const success = await joinRoom(formattedRoomId, name.trim());
-		if (success) {
-			console.log('Successfully joined room:', formattedRoomId);
-			router.push(`/room/${formattedRoomId}`);
-		} else {
-			setJoinError('Failed to join room. Please try again.');
+			// Join the room
+			const success = await joinRoom(formattedRoomId, name.trim());
+			if (success) {
+				router.push(`/room/${formattedRoomId}`);
+			} else {
+				setJoinError('Failed to join room. Please try again.');
+			}
+		} catch (error) {
+			console.error('Error joining room:', error);
+			setJoinError('An error occurred. Please try again.');
+		} finally {
+			setIsSubmitting(false);
 		}
 	};
 
-	const handleCreateRoom = (e: React.FormEvent) => {
+	const handleCreateRoom = async (e: React.FormEvent) => {
 		e.preventDefault();
+		setIsSubmitting(true);
 
-		const trimmedRoomName = roomName.trim();
-		const trimmedHostName = hostName.trim();
+		try {
+			const trimmedRoomName = roomName.trim();
+			const trimmedHostName = hostName.trim();
 
-		if (!trimmedRoomName || !trimmedHostName) {
-			return;
+			if (!trimmedRoomName || !trimmedHostName) {
+				return;
+			}
+
+			const newRoomId = await createRoom(
+				trimmedRoomName,
+				roomDescription.trim(),
+				trimmedHostName,
+			);
+
+			if (newRoomId) {
+				router.push(`/room/${newRoomId}`);
+			}
+		} catch (error) {
+			console.error('Error creating room:', error);
+		} finally {
+			setIsSubmitting(false);
 		}
-
-		const newRoomId = createRoom(
-			trimmedRoomName,
-			roomDescription.trim(),
-			trimmedHostName,
-		);
-		router.push(`/room/${newRoomId}`);
 	};
 
 	return (
@@ -96,7 +115,7 @@ export default function Home() {
 						<h2 className="text-2xl font-bold text-gray-900 mb-6">
 							Join a Room
 						</h2>
-						<form onSubmit={handleJoinRoom} suppressHydrationWarning>
+						<form onSubmit={handleJoinRoom}>
 							<Input
 								id="join-room-id"
 								label="Room Code"
@@ -116,8 +135,8 @@ export default function Home() {
 							{joinError && (
 								<p className="text-red-500 text-sm mb-4">{joinError}</p>
 							)}
-							<Button type="submit" fullWidth>
-								Join Room
+							<Button type="submit" fullWidth disabled={isSubmitting}>
+								{isSubmitting ? 'Joining...' : 'Join Room'}
 							</Button>
 						</form>
 					</Card>
@@ -127,7 +146,7 @@ export default function Home() {
 						<h2 className="text-2xl font-bold text-gray-900 mb-6">
 							Create a Room
 						</h2>
-						<form onSubmit={handleCreateRoom} suppressHydrationWarning>
+						<form onSubmit={handleCreateRoom}>
 							<Input
 								id="create-name"
 								label="Your Name"
@@ -151,8 +170,8 @@ export default function Home() {
 								value={roomDescription}
 								onChange={(e) => setRoomDescription(e.target.value)}
 							/>
-							<Button type="submit" fullWidth>
-								Create Room
+							<Button type="submit" fullWidth disabled={isSubmitting}>
+								{isSubmitting ? 'Creating...' : 'Create Room'}
 							</Button>
 						</form>
 					</Card>

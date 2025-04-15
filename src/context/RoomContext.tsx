@@ -11,6 +11,7 @@ type Room = api.Room;
 interface RoomContextType {
     room: Room | null;
     userId: string | null;
+    participantId: string | null;  // Make this accessible
     isLoading: boolean;
     error: string | null;
     createRoom: (name: string, description: string, hostName: string) => Promise<string>;
@@ -27,6 +28,7 @@ interface RoomContextType {
 const RoomContext = createContext<RoomContextType>({
     room: null,
     userId: null,
+    participantId: null,
     isLoading: false,
     error: null,
     createRoom: async () => '',
@@ -51,6 +53,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const [isClient, setIsClient] = useState<boolean>(false);
+    const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
 
     // Set isClient to true once component mounts on client
     useEffect(() => {
@@ -83,63 +86,28 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, [isClient]);
 
-    // Subscribe to WebSocket updates when in a room
+    // Set up polling when in a room
     useEffect(() => {
         if (!isClient || !room?.id) return;
 
-        // Subscribe to real-time updates for the current room
-        const unsubscribe = api.subscribeToRoom(room.id, {
-            onUpdate: (updatedRoom) => {
-                if (updatedRoom.deleted) {
-                    // Room was deleted
-                    setRoom(null);
-                    setParticipantId(null);
-                    localStorage.removeItem('currentRoomId');
-                    localStorage.removeItem('participantId');
-                } else {
-                    setRoom(updatedRoom);
-                }
-            },
-            onParticipantJoin: (data) => {
-                setRoom(data.room);
-            },
-            onParticipantLeave: (data) => {
-                if (data.roomDeleted) {
-                    setRoom(null);
-                    setParticipantId(null);
-                    localStorage.removeItem('currentRoomId');
-                    localStorage.removeItem('participantId');
-                } else if (data.room) {
-                    setRoom(data.room);
-                }
-            },
-            onVoteSubmit: (updatedRoom) => {
-                setRoom(updatedRoom);
-            },
-            onVotesReveal: (updatedRoom) => {
-                setRoom(updatedRoom);
-            },
-            onVotesReset: (updatedRoom) => {
-                setRoom(updatedRoom);
-            },
-        });
+        // Clear any existing interval
+        if (pollingInterval) {
+            clearInterval(pollingInterval);
+        }
 
-        // Cleanup subscription on unmount or room change
+        // Set up new polling interval
+        const intervalId = setInterval(() => {
+            refreshRoom(room.id).catch(console.error);
+        }, 3000); // Poll every 3 seconds
+
+        setPollingInterval(intervalId);
+
+        // Clean up on unmount or room change
         return () => {
-            unsubscribe();
+            clearInterval(intervalId);
+            setPollingInterval(null);
         };
     }, [isClient, room?.id]);
-
-    // Initial load of room data if needed
-    useEffect(() => {
-        if (!isClient) return;
-
-        // Check if user was in a room
-        const storedRoomId = localStorage.getItem('currentRoomId');
-        if (storedRoomId) {
-            refreshRoom(storedRoomId).catch(console.error);
-        }
-    }, [isClient]);
 
     // Create a new room
     const createRoom = async (name: string, description: string, hostName: string): Promise<string> => {
@@ -230,12 +198,19 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Submit a vote
     const submitVote = async (vote: string): Promise<void> => {
-        if (!room || !participantId) return;
+        if (!room || !participantId) {
+            console.error('Cannot submit vote: room or participantId is missing');
+            console.log('Room ID:', room?.id);
+            console.log('Participant ID:', participantId);
+            setError('Cannot submit vote: not properly connected to room');
+            return;
+        }
 
         setIsLoading(true);
         setError(null);
 
         try {
+            console.log(`Submitting vote ${vote} for participant ${participantId} in room ${room.id}`);
             const updatedRoom = await api.submitVote(room.id, participantId, vote);
             setRoom(updatedRoom);
         } catch (err) {
@@ -303,9 +278,6 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const refreshRoom = async (roomId: string): Promise<void> => {
         if (!roomId || !isClient) return;
 
-        setIsLoading(true);
-        setError(null);
-
         try {
             const latestRoom = await api.getRoom(roomId);
 
@@ -333,8 +305,6 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (err) {
             console.error('Error refreshing room:', err);
             setError('Failed to refresh room data');
-        } finally {
-            setIsLoading(false);
         }
     };
 
@@ -342,6 +312,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const contextValue = {
         room,
         userId,
+        participantId,  // Expose this to components
         isLoading,
         error,
         createRoom,

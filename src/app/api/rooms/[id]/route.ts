@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { triggerRoomEvent, EVENTS } from '@/lib/pusher';
 
 // Get a specific room by ID
 export async function GET(request: Request, context: { params: { id: any } }) {
 	try {
-		// Always await the params.id first, no type checking
+		// First await the entire params object
 		const params = await context.params;
-		const roomId = await params.id;
+		// Then extract the ID
+		const roomId = params.id;
 
 		if (!roomId) {
 			return NextResponse.json({ error: 'Invalid room ID' }, { status: 400 });
@@ -42,9 +42,10 @@ export async function PATCH(
 	context: { params: { id: any } },
 ) {
 	try {
-		// Always await the params.id first, no type checking
+		// First await the entire params object
 		const params = await context.params;
-		const roomId = await params.id;
+		// Then extract the ID
+		const roomId = params.id;
 
 		if (!roomId) {
 			return NextResponse.json({ error: 'Invalid room ID' }, { status: 400 });
@@ -65,12 +66,6 @@ export async function PATCH(
 			},
 		});
 
-		if (isRevealed !== undefined) {
-			triggerRoomEvent(roomId, EVENTS.VOTES_REVEALED, room);
-		} else {
-			triggerRoomEvent(roomId, EVENTS.ROOM_UPDATED, room);
-		}
-
 		return NextResponse.json(room);
 	} catch (error) {
 		console.error('Error updating room:', error);
@@ -87,9 +82,10 @@ export async function DELETE(
 	context: { params: { id: any } },
 ) {
 	try {
-		// Always await the params.id first, no type checking
+		// First await the entire params object
 		const params = await context.params;
-		const roomId = await params.id;
+		// Then extract the ID
+		const roomId = params.id;
 
 		if (!roomId) {
 			return NextResponse.json({ error: 'Invalid room ID' }, { status: 400 });

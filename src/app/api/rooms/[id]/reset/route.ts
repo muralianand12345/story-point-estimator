@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { triggerRoomEvent, EVENTS } from '@/lib/pusher';
 
 // Reset all votes in a room
 export async function POST(request: Request, context: { params: { id: any } }) {
 	try {
-		// Always await the params.id first, no type checking
+		// First await the entire params object
 		const params = await context.params;
-		const roomId = await params.id;
+		// Then extract the ID
+		const roomId = params.id;
 
 		if (!roomId) {
 			return NextResponse.json({ error: 'Invalid room ID' }, { status: 400 });
@@ -42,10 +42,6 @@ export async function POST(request: Request, context: { params: { id: any } }) {
 				participants: true,
 			},
 		});
-
-		if (updatedRoom) {
-			triggerRoomEvent(roomId, EVENTS.VOTES_RESET, updatedRoom);
-		}
 
 		return NextResponse.json(updatedRoom);
 	} catch (error) {

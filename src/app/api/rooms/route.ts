@@ -1,8 +1,6 @@
-
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { generateRoomCode } from '@/utils/roomUtils';
-import { triggerRoomEvent, EVENTS } from '@/lib/pusher';
 
 export async function POST(request: Request) {
     try {
@@ -36,8 +34,6 @@ export async function POST(request: Request) {
                 participants: true,
             },
         });
-
-        triggerRoomEvent(roomId, EVENTS.ROOM_UPDATED, room);
 
         return NextResponse.json(room, { status: 201 });
     } catch (error) {

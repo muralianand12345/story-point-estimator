@@ -12,134 +12,87 @@ import ShareRoom from '../../../components/ShareRoom';
 import Button from '../../../components/Button';
 
 export default function RoomPage() {
-	const paramsPromise = useParams();
-	const [roomId, setRoomId] = useState<string>('');
+	const params = useParams();
 	const router = useRouter();
+
+	// Extract room ID from params
+	const roomId = typeof params.id === 'string'
+		? params.id
+		: Array.isArray(params.id)
+			? params.id[0]
+			: '';
 
 	const {
 		room,
 		userId,
-		joinRoom,
+		participantId,
 		submitVote,
 		revealVotes,
 		resetVotes,
-		checkRoomExists,
 		refreshRoom,
+		error,
 	} = useRoom();
+
 	const [selectedVote, setSelectedVote] = useState<string | null>(null);
-	// State to track client-side rendering
 	const [isClient, setIsClient] = useState(false);
-	// Use ref to track if initial setup is done
 	const initialSetupDone = useRef(false);
-	// Use ref to track last refresh time to prevent excessive refreshes
-	const lastRefreshTime = useRef(0);
-	// Loading state while resolving params
 	const [isLoading, setIsLoading] = useState(true);
 
-	// Set isClient to true once mounted and resolve params
+	// Set isClient to true once mounted
 	useEffect(() => {
 		setIsClient(true);
+		setIsLoading(true);
+	}, []);
 
-		// Resolve the params promise
-		const resolveParams = async () => {
-			try {
-				const params = await paramsPromise;
-				const id =
-					typeof params.id === 'string'
-						? params.id
-						: Array.isArray(params.id)
-						? params.id[0]
-						: '';
-
-				setRoomId(id);
-				setIsLoading(false);
-			} catch (error) {
-				console.error('Error resolving params:', error);
-				router.push('/');
-			}
-		};
-
-		resolveParams();
-	}, [paramsPromise, router]);
-
-	// Check if user is in this room and if room exists - only run on client
+	// Initial setup - fetch room data
 	useEffect(() => {
-		if (!roomId || !isClient || isLoading) return;
-
-		// Prevent this effect from running multiple times
+		if (!roomId || !isClient) return;
 		if (initialSetupDone.current) return;
 
-		// If room doesn't exist, redirect to home
-		if (!checkRoomExists(roomId)) {
-			router.push('/');
-			return;
-		}
+		console.log("Initializing room data for:", roomId);
 
-		// If not in this room, refresh room data
-		if (!room || room.id !== roomId) {
-			refreshRoom(roomId);
-		}
-
-		initialSetupDone.current = true;
-	}, [
-		room,
-		userId,
-		roomId,
-		router,
-		checkRoomExists,
-		refreshRoom,
-		isClient,
-		isLoading,
-	]);
+		// Initial fetch of room data
+		refreshRoom(roomId).then(() => {
+			setIsLoading(false);
+			initialSetupDone.current = true;
+		}).catch(err => {
+			console.error("Error refreshing room:", err);
+			setIsLoading(false);
+			initialSetupDone.current = true;
+		});
+	}, [roomId, refreshRoom, isClient]);
 
 	// Update selected vote when room changes
 	useEffect(() => {
-		if (room && userId) {
-			const participant = room.participants.find((p) => p.id === userId);
-			if (participant && participant.vote) {
-				setSelectedVote(participant.vote);
-			} else if (room.isRevealed === false) {
-				// Reset selected vote when a new round starts
-				setSelectedVote(null);
-			}
-		}
-	}, [room, userId]);
+		if (!room || !participantId) return;
 
-	// Set up periodic refresh - only run on client
+		const participant = room.participants.find((p) => p.id === participantId);
+		if (participant && participant.vote) {
+			setSelectedVote(participant.vote);
+		} else if (room.isRevealed === false) {
+			// Reset selected vote when a new round starts
+			setSelectedVote(null);
+		}
+	}, [room, participantId]);
+
+	// Redirect if not in this room or room doesn't exist
 	useEffect(() => {
-		if (!roomId || !isClient || isLoading) return;
+		if (!isClient || isLoading) return;
 
-		// Initial refresh if not done recently
-		const now = Date.now();
-		if (now - lastRefreshTime.current > 2000) {
-			refreshRoom(roomId);
-			lastRefreshTime.current = now;
+		// If we have loaded and don't have room data, redirect to home
+		if (!isLoading && !room) {
+			console.log("No room data found, redirecting to home");
+			router.push('/');
 		}
-
-		// Set up interval for periodic refresh
-		const intervalId = setInterval(() => {
-			refreshRoom(roomId);
-			lastRefreshTime.current = Date.now();
-		}, 5000); // Every 5 seconds
-
-		return () => clearInterval(intervalId);
-	}, [roomId, refreshRoom, isClient, isLoading]);
-
-	// If not fully loaded or not in a room, show loading screen
-	if (!isClient || isLoading || !room || room.id !== roomId) {
-		return (
-			<div className="min-h-screen bg-gray-50 flex items-center justify-center">
-				<p>Loading room data...</p>
-			</div>
-		);
-	}
-
-	const isHost =
-		room.participants.find((p) => p.id === userId)?.isHost || false;
-	const allVoted = room.participants.every((p) => p.vote !== null);
+	}, [room, router, isClient, isLoading]);
 
 	// Handle vote selection
 	const handleVoteSelect = (vote: string) => {
+		if (!participantId) {
+			console.error("Cannot vote: No participant ID");
+			return;
+		}
+
 		setSelectedVote(vote);
 		submitVote(vote);
 	};
@@ -155,6 +108,62 @@ export default function RoomPage() {
 		setSelectedVote(null);
 	};
 
+	// Show loading state
+	if (isLoading || !isClient) {
+		return (
+			<div className="min-h-screen bg-gray-50">
+				<Header />
+				<div className="flex items-center justify-center min-h-[60vh]">
+					<p className="text-lg">Loading room data...</p>
+				</div>
+			</div>
+		);
+	}
+
+	// Show error if room not found
+	if (!room) {
+		return (
+			<div className="min-h-screen bg-gray-50">
+				<Header />
+				<main className="max-w-md mx-auto px-4 py-12">
+					<Card>
+						<h1 className="text-xl font-bold text-gray-900 mb-4">Room Not Found</h1>
+						<p className="text-gray-600 mb-6">
+							The room you're trying to access doesn't exist or has been closed.
+						</p>
+						<Button onClick={() => router.push('/')} fullWidth>
+							Back to Home
+						</Button>
+					</Card>
+				</main>
+			</div>
+		);
+	}
+
+	// Show error if there's a participant issue
+	if (!participantId) {
+		return (
+			<div className="min-h-screen bg-gray-50">
+				<Header />
+				<main className="max-w-md mx-auto px-4 py-12">
+					<Card>
+						<h1 className="text-xl font-bold text-gray-900 mb-4">Connection Issue</h1>
+						<p className="text-gray-600 mb-6">
+							You're not properly connected to this room. Please try joining again.
+						</p>
+						<Button onClick={() => router.push(`/join/${roomId}`)} fullWidth>
+							Rejoin Room
+						</Button>
+					</Card>
+				</main>
+			</div>
+		);
+	}
+
+	const isHost =
+		room.participants.find((p) => p.id === participantId)?.isHost || false;
+	const allVoted = room.participants.every((p) => p.vote !== null);
+
 	return (
 		<div className="min-h-screen bg-gray-50">
 			<Header />
@@ -166,6 +175,12 @@ export default function RoomPage() {
 						<p className="text-gray-600 mt-1">{room.description}</p>
 					)}
 				</div>
+
+				{error && (
+					<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+						{error}
+					</div>
+				)}
 
 				<div className="grid md:grid-cols-3 gap-6">
 					<div className="md:col-span-2">
@@ -237,7 +252,7 @@ export default function RoomPage() {
 										hasVoted={participant.vote !== null}
 										vote={participant.vote}
 										isRevealed={room.isRevealed}
-										isSelf={participant.id === userId}
+										isSelf={participant.id === participantId}
 									/>
 								))}
 							</div>

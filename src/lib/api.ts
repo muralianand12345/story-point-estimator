@@ -1,5 +1,3 @@
-import { pusherClient, EVENTS } from './pusher';
-
 // Room Types
 export interface Participant {
     id: string;
@@ -117,6 +115,12 @@ export async function submitVote(
     participantId: string,
     vote: string
 ): Promise<Room> {
+    console.log(`API submitVote - roomId: ${roomId}, participantId: ${participantId}, vote: ${vote}`);
+
+    if (!roomId || !participantId) {
+        throw new Error('Invalid room or participant ID');
+    }
+
     const response = await fetch(
         `/api/rooms/${roomId}/participants/${participantId}`,
         {
@@ -129,8 +133,9 @@ export async function submitVote(
     );
 
     if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to submit vote');
+        const errorData = await response.json();
+        console.error('Submit vote response error:', errorData);
+        throw new Error(errorData.error || 'Failed to submit vote');
     }
 
     return response.json();
@@ -176,56 +181,4 @@ export async function checkRoomExists(roomId: string): Promise<boolean> {
     } catch (error) {
         return false;
     }
-}
-
-// Subscribe to room updates via WebSocket
-export function subscribeToRoom(
-    roomId: string,
-    callbacks: {
-        onUpdate?: (room: Room) => void;
-        onParticipantJoin?: (data: { participant: Participant; room: Room }) => void;
-        onParticipantLeave?: (data: { participantId: string; room?: Room; roomDeleted: boolean }) => void;
-        onVoteSubmit?: (room: Room) => void;
-        onVotesReveal?: (room: Room) => void;
-        onVotesReset?: (room: Room) => void;
-    }
-): () => void {
-    if (!pusherClient) {
-        console.warn('Pusher client not initialized. Real-time updates disabled.');
-        return () => { }; // Return no-op unsubscribe function
-    }
-
-    const channelName = `room-${roomId}`;
-    const channel = pusherClient.subscribe(channelName);
-
-    // Set up event handlers
-    if (callbacks.onUpdate) {
-        channel.bind(EVENTS.ROOM_UPDATED, callbacks.onUpdate);
-    }
-
-    if (callbacks.onParticipantJoin) {
-        channel.bind(EVENTS.PARTICIPANT_JOINED, callbacks.onParticipantJoin);
-    }
-
-    if (callbacks.onParticipantLeave) {
-        channel.bind(EVENTS.PARTICIPANT_LEFT, callbacks.onParticipantLeave);
-    }
-
-    if (callbacks.onVoteSubmit) {
-        channel.bind(EVENTS.VOTE_SUBMITTED, callbacks.onVoteSubmit);
-    }
-
-    if (callbacks.onVotesReveal) {
-        channel.bind(EVENTS.VOTES_REVEALED, callbacks.onVotesReveal);
-    }
-
-    if (callbacks.onVotesReset) {
-        channel.bind(EVENTS.VOTES_RESET, callbacks.onVotesReset);
-    }
-
-    // Return unsubscribe function
-    return () => {
-        channel.unbind_all();
-        pusherClient.unsubscribe(channelName);
-    };
 }

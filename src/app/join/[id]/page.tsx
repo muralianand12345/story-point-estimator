@@ -11,21 +11,30 @@ import { useRoom } from '../../../context/RoomContext';
 export default function JoinPage() {
     const params = useParams();
     const router = useRouter();
-    const roomId = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : '';
-    const formattedRoomId = roomId.trim().toUpperCase(); // Format the room ID
+
+    // Extract and format room ID
+    const roomId = typeof params.id === 'string'
+        ? params.id
+        : Array.isArray(params.id)
+            ? params.id[0]
+            : '';
+    const formattedRoomId = roomId.trim().toUpperCase();
 
     const { room, joinRoom, checkRoomExists, refreshRoom } = useRoom();
     const [name, setName] = useState('');
     const [error, setError] = useState('');
     const [roomExists, setRoomExists] = useState(true);
-    // Use ref to track initialization status
+    const [isClient, setIsClient] = useState(false);
     const initialCheckDone = useRef(false);
+
+    // Set isClient once component mounts
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
 
     // Check if room exists and if user is already in the room
     useEffect(() => {
-        if (!formattedRoomId) return;
-
-        // Prevent multiple executions of this effect
+        if (!formattedRoomId || !isClient) return;
         if (initialCheckDone.current) return;
 
         // If already in this room, redirect to room page
@@ -34,9 +43,8 @@ export default function JoinPage() {
             return;
         }
 
-        // Need to use an async function inside useEffect
+        // Check if room exists
         const checkRoom = async () => {
-            // Check if room exists
             const exists = await checkRoomExists(formattedRoomId);
             setRoomExists(exists);
 
@@ -48,7 +56,7 @@ export default function JoinPage() {
 
         checkRoom();
         initialCheckDone.current = true;
-    }, [room, formattedRoomId, router, checkRoomExists, refreshRoom]);
+    }, [room, formattedRoomId, router, checkRoomExists, refreshRoom, isClient]);
 
     const handleJoinRoom = async (e: React.FormEvent) => {
         e.preventDefault();

@@ -1,23 +1,5 @@
-import Pusher from 'pusher';
-import PusherClient from 'pusher-js';
-
-// Server-side Pusher instance
-export const pusher = process.env.PUSHER_APP_ID
-    ? new Pusher({
-        appId: process.env.PUSHER_APP_ID!,
-        key: process.env.PUSHER_KEY!,
-        secret: process.env.PUSHER_SECRET!,
-        cluster: process.env.PUSHER_CLUSTER!,
-        useTLS: true,
-    })
-    : null;
-
-// Client-side Pusher instance
-export const pusherClient = process.env.NEXT_PUBLIC_PUSHER_KEY
-    ? new PusherClient(process.env.NEXT_PUBLIC_PUSHER_KEY, {
-        cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
-    })
-    : null;
+// This is a dummy implementation to prevent breaking changes
+// We're not using Pusher anymore, but some imports might still reference this file
 
 // Event types
 export const EVENTS = {
@@ -29,17 +11,18 @@ export const EVENTS = {
     VOTES_RESET: 'votes-reset',
 };
 
-// Helper function to trigger events
+// No-op function to replace the pusher trigger
 export const triggerRoomEvent = (
     roomId: string,
     event: string,
     data: any
 ): void => {
-    if (!pusher) return;
-
-    try {
-        pusher.trigger(`room-${roomId}`, event, data);
-    } catch (error) {
-        console.error(`Error triggering event ${event}:`, error);
-    }
+    // This function does nothing - we're using polling instead
+    return;
 };
+
+// Server-side Pusher instance (null)
+export const pusher = null;
+
+// Client-side Pusher instance (null)
+export const pusherClient = null;

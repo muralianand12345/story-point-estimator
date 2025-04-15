@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { triggerRoomEvent, EVENTS } from '@/lib/pusher';
 
 // Submit a vote for a participant
 export async function PATCH(
@@ -8,10 +7,15 @@ export async function PATCH(
 	context: { params: { id: any; participantId: any } },
 ) {
 	try {
-		// Always await the params first, no type checking
+		// First await the entire params object
 		const params = await context.params;
-		const roomId = await params.id;
-		const participantId = await context.params.participantId;
+
+		// Extract the IDs - ensure they're strings, not Promises
+		const roomId = params.id;
+		const participantId = params.participantId;
+
+		console.log("Debug - roomId:", roomId);
+		console.log("Debug - participantId:", participantId);
 
 		if (!roomId || !participantId) {
 			return NextResponse.json(
@@ -44,10 +48,6 @@ export async function PATCH(
 			},
 		});
 
-		if (updatedRoom) {
-			triggerRoomEvent(roomId, EVENTS.VOTE_SUBMITTED, updatedRoom);
-		}
-
 		return NextResponse.json(updatedRoom);
 	} catch (error) {
 		console.error('Error submitting vote:', error);
@@ -64,10 +64,15 @@ export async function DELETE(
 	context: { params: { id: any; participantId: any } },
 ) {
 	try {
-		// Always await the params first, no type checking
+		// First await the entire params object
 		const params = await context.params;
-		const roomId = await params.id;
-		const participantId = await context.params.participantId;
+
+		// Extract the IDs - ensure they're strings, not Promises
+		const roomId = params.id;
+		const participantId = params.participantId;
+
+		console.log("Debug - roomId:", roomId);
+		console.log("Debug - participantId:", participantId);
 
 		if (!roomId || !participantId) {
 			return NextResponse.json(
@@ -99,8 +104,6 @@ export async function DELETE(
 				},
 			});
 
-			triggerRoomEvent(roomId, EVENTS.ROOM_UPDATED, { deleted: true });
-
 			return NextResponse.json({ roomDeleted: true });
 		}
 
@@ -127,12 +130,6 @@ export async function DELETE(
 			include: {
 				participants: true,
 			},
-		});
-
-		triggerRoomEvent(roomId, EVENTS.PARTICIPANT_LEFT, {
-			participantId,
-			roomDeleted: false,
-			room: updatedRoom,
 		});
 
 		return NextResponse.json({
