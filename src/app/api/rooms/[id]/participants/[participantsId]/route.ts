@@ -1,17 +1,15 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getParamId } from '@/utils/apiUtils';
 
 // Submit a vote for a participant
 export async function PATCH(
 	request: Request,
-	context: { params: { id: string; participantId: string } },
+	context: { params: { id: string; participantsId: string } }, // Note the correct parameter name: participantsId
 ) {
 	try {
 		// Extract the IDs
-		const params = await context.params;
-		const roomId = params.id;
-		const participantId = params.participantId;
+		const roomId = context.params.id;
+		const participantId = context.params.participantsId; // Access the correct parameter name
 
 		console.log("Debug - roomId:", roomId);
 		console.log("Debug - participantId:", participantId);
@@ -60,12 +58,12 @@ export async function PATCH(
 // Remove a participant from a room
 export async function DELETE(
 	request: Request,
-	context: { params: { id: string; participantId: string } },
+	context: { params: { id: string; participantsId: string } }, // Note the correct parameter name
 ) {
 	try {
 		// Extract the IDs
 		const roomId = context.params.id;
-		const participantId = context.params.participantId;
+		const participantId = context.params.participantsId; // Access the correct parameter name
 
 		console.log("Debug - roomId:", roomId);
 		console.log("Debug - participantId:", participantId);
