@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { RoomProvider } from "../context/RoomContext";
 import ThemeProvider from "../context/ThemeContext";
+import { Analytics } from "@vercel/analytics/react"
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -26,6 +27,7 @@ const RootLayout = async ({
 }>) => {
     return (
         <html lang="en" suppressHydrationWarning>
+            <Analytics/>
             <body
                 className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen transition-colors`}
             >
