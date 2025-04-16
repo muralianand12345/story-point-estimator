@@ -23,16 +23,16 @@ const ParticipantCard: React.FC<ParticipantCardProps> = ({
         <div className={`
       flex items-center p-3 rounded-lg 
       ${isSelf
-                ? 'bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700'
+                ? 'bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-700'
                 : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'} 
       transition-colors
     `}>
             <div className="flex-1">
                 <div className="flex items-center">
-                    <span className="font-medium text-purple-600 dark:text-purple-400">{name}</span>
-                    {isSelf && <span className="ml-2 text-xs text-purple-600 dark:text-purple-400">(You)</span>}
+                    <span className="font-medium text-primary-600 dark:text-primary-400">{name}</span>
+                    {isSelf && <span className="ml-2 text-xs text-primary-600 dark:text-primary-400">(You)</span>}
                     {isHost && (
-                        <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 rounded">
+                        <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-primary-100 dark:bg-primary-800/50 text-primary-800 dark:text-primary-300 rounded">
                             Host
                         </span>
                     )}
@@ -44,7 +44,7 @@ const ParticipantCard: React.FC<ParticipantCardProps> = ({
                     <div className={`
             w-8 h-8 flex items-center justify-center rounded-full 
             ${vote
-                            ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300'
+                            ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-300'
                             : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}
             font-medium text-sm
           `}>

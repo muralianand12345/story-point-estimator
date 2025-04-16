@@ -6,6 +6,8 @@ import Header from '../components/Header';
 import Card from '../components/Card';
 import Input from '../components/Input';
 import { useRoom } from '../context/RoomContext';
+import Logo from '../components/Logo';
+import Button from '../components/Button';
 
 export default function Home() {
 	const router = useRouter();
@@ -100,7 +102,10 @@ export default function Home() {
 			<Header />
 			<main className="max-w-4xl mx-auto px-4 py-12">
 				<div className="text-center mb-12">
-					<h1 className="text-4xl font-bold mb-4">
+					<div className="flex justify-center mb-4">
+						<Logo size="lg" showText={false} />
+					</div>
+					<h1 className="text-4xl font-bold mb-4 text-primary-700 dark:text-primary-400">
 						Story Point Estimator
 					</h1>
 					<p className="text-lg text-gray-600 dark:text-gray-400">
@@ -111,7 +116,7 @@ export default function Home() {
 				<div className="grid md:grid-cols-2 gap-8">
 					{/* Join Room */}
 					<Card>
-						<h2 className="text-2xl font-bold mb-6">
+						<h2 className="text-2xl font-bold mb-6 text-primary-600 dark:text-primary-500">
 							Join a Room
 						</h2>
 						<form onSubmit={handleJoinRoom}>
@@ -134,19 +139,21 @@ export default function Home() {
 							{joinError && (
 								<p className="text-red-500 dark:text-red-400 text-sm mb-4">{joinError}</p>
 							)}
-							<button
+							<Button
 								type="submit"
 								disabled={isSubmitting}
-								className="btn-primary mt-2"
+								variant="primary"
+								fullWidth
+								className="mt-2"
 							>
 								{isSubmitting ? 'Joining...' : 'Join Room'}
-							</button>
+							</Button>
 						</form>
 					</Card>
 
 					{/* Create Room */}
 					<Card>
-						<h2 className="text-2xl font-bold mb-6">
+						<h2 className="text-2xl font-bold mb-6 text-primary-600 dark:text-primary-500">
 							Create a Room
 						</h2>
 						<form onSubmit={handleCreateRoom}>
@@ -173,13 +180,15 @@ export default function Home() {
 								value={roomDescription}
 								onChange={(e) => setRoomDescription(e.target.value)}
 							/>
-							<button
+							<Button
 								type="submit"
 								disabled={isSubmitting}
-								className="btn-primary mt-2"
+								variant="primary"
+								fullWidth
+								className="mt-2"
 							>
 								{isSubmitting ? 'Creating...' : 'Create Room'}
-							</button>
+							</Button>
 						</form>
 					</Card>
 				</div>

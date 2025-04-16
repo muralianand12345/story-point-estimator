@@ -27,10 +27,10 @@ const Button: React.FC<ButtonProps> = ({
     const baseStyles = 'rounded-md font-medium transition-all focus:outline-none';
 
     const variantStyles = {
-        primary: 'btn-primary',
+        primary: 'bg-primary-600 hover:bg-primary-700 text-white',
         secondary: 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600',
-        outline: 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800',
-        text: 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-gray-800',
+        outline: 'border border-primary-500 dark:border-primary-400 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-gray-800',
+        text: 'text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-gray-800',
     };
 
     const sizeStyles = {

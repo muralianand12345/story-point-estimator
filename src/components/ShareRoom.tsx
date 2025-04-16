@@ -44,7 +44,7 @@ const ShareRoom: React.FC<ShareRoomProps> = ({ roomId }) => {
     if (!isClient) {
         return (
             <Card className="mb-6">
-                <h3 className="text-lg font-medium mb-4">Share Room</h3>
+                <h3 className="text-lg font-medium mb-4 text-primary-700 dark:text-primary-400">Share Room</h3>
                 <div className="mb-4 h-16">
                     {/* Placeholder content with matching height */}
                 </div>
@@ -54,28 +54,30 @@ const ShareRoom: React.FC<ShareRoomProps> = ({ roomId }) => {
 
     return (
         <Card className="mb-6">
-            <h3 className="text-lg font-medium mb-4">Share Room</h3>
+            <h3 className="text-lg font-medium mb-4 text-primary-700 dark:text-primary-400">Share Room</h3>
 
             <div className="mb-4">
                 <div className="flex items-center mb-2">
                     <p className="text-sm text-gray-500 dark:text-gray-400 mr-2">Room Code:</p>
-                    <p className="font-mono font-medium text-lg">{roomId}</p>
+                    <p className="font-mono font-medium text-lg text-primary-600 dark:text-primary-400">{roomId}</p>
                 </div>
 
                 <div className="flex space-x-2">
-                    <button
-                        className="btn-primary flex-1"
+                    <Button
+                        variant="primary"
+                        fullWidth
                         onClick={() => copyToClipboard(roomId, 'code')}
                     >
                         {copied && copyType === 'code' ? 'Copied!' : 'Copy Code'}
-                    </button>
+                    </Button>
 
-                    <button
-                        className="btn-primary flex-1"
+                    <Button
+                        variant="outline"
+                        fullWidth
                         onClick={() => copyToClipboard(roomLink, 'link')}
                     >
                         {copied && copyType === 'link' ? 'Copied!' : 'Copy Link'}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </Card>

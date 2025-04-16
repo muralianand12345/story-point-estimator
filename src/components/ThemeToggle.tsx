@@ -40,7 +40,7 @@ const ThemeToggle: React.FC = () => {
             aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
         >
             {isDark ? (
-                <svg className="w-5 h-5 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-5 h-5 text-primary-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -49,7 +49,7 @@ const ThemeToggle: React.FC = () => {
                     />
                 </svg>
             ) : (
-                <svg className="w-5 h-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-5 h-5 text-primary-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path
                         strokeLinecap="round"
                         strokeLinejoin="round"

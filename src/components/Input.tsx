@@ -28,7 +28,7 @@ const Input: React.FC<InputProps> = ({
     return (
         <div className={`mb-4 ${className}`}>
             {label && (
-                <label htmlFor={id} className={`block mb-2 text-sm ${required ? 'required' : ''}`}>
+                <label htmlFor={id} className={`block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300 ${required ? 'required' : ''}`}>
                     {label}
                 </label>
             )}
@@ -39,7 +39,7 @@ const Input: React.FC<InputProps> = ({
                 onChange={onChange}
                 placeholder={placeholder}
                 required={required}
-                className="custom-input"
+                className="custom-input focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
             {error && <p className="mt-1 text-xs text-red-500 dark:text-red-400">{error}</p>}
         </div>

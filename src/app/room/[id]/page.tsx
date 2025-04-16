@@ -10,6 +10,7 @@ import ParticipantCard from '../../../components/ParticipantCard';
 import VotingResult from '../../../components/VotingResult';
 import ShareRoom from '../../../components/ShareRoom';
 import Button from '../../../components/Button';
+import Logo from '../../../components/Logo';
 
 export default function RoomPage() {
 	const params = useParams();
@@ -110,7 +111,8 @@ export default function RoomPage() {
 		return (
 			<div className="min-h-screen">
 				<Header />
-				<div className="flex items-center justify-center min-h-[60vh]">
+				<div className="flex flex-col items-center justify-center min-h-[60vh]">
+					<Logo size="lg" className="mb-6" />
 					<p className="text-lg text-gray-600 dark:text-gray-400">Loading room data...</p>
 				</div>
 			</div>
@@ -124,13 +126,16 @@ export default function RoomPage() {
 				<Header />
 				<main className="max-w-md mx-auto px-4 py-12">
 					<Card>
-						<h1 className="text-xl font-bold mb-4">Room Not Found</h1>
+						<h1 className="text-xl font-bold mb-4 text-primary-700 dark:text-primary-400">Room Not Found</h1>
 						<p className="text-gray-600 dark:text-gray-400 mb-6">
 							The room you&apos;re trying to access doesn&apos;t exist or has been closed.
 						</p>
-						<button onClick={() => router.push('/')} className="btn-primary">
+						<Button
+							onClick={() => router.push('/')}
+							variant="primary"
+						>
 							Back to Home
-						</button>
+						</Button>
 					</Card>
 				</main>
 			</div>
@@ -144,13 +149,16 @@ export default function RoomPage() {
 				<Header />
 				<main className="max-w-md mx-auto px-4 py-12">
 					<Card>
-						<h1 className="text-xl font-bold mb-4">Connection Issue</h1>
+						<h1 className="text-xl font-bold mb-4 text-primary-700 dark:text-primary-400">Connection Issue</h1>
 						<p className="text-gray-600 dark:text-gray-400 mb-6">
 							You&apos;re not properly connected to this room. Please try joining again.
 						</p>
-						<button onClick={() => router.push(`/join/${roomId}`)} className="btn-primary">
+						<Button
+							onClick={() => router.push(`/join/${roomId}`)}
+							variant="primary"
+						>
 							Rejoin Room
-						</button>
+						</Button>
 					</Card>
 				</main>
 			</div>
@@ -167,7 +175,7 @@ export default function RoomPage() {
 
 			<main className="max-w-4xl mx-auto px-4 py-8">
 				<div className="mb-6">
-					<h1 className="text-2xl font-bold">{room.name}</h1>
+					<h1 className="text-2xl font-bold text-primary-700 dark:text-primary-400">{room.name}</h1>
 					{room.description && (
 						<p className="text-gray-600 dark:text-gray-400 mt-1">{room.description}</p>
 					)}
@@ -183,29 +191,31 @@ export default function RoomPage() {
 					<div className="md:col-span-2">
 						<Card>
 							<div className="flex justify-between items-center mb-4">
-								<h2 className="text-lg font-medium">
+								<h2 className="text-lg font-medium text-primary-700 dark:text-primary-400">
 									Cast Your Vote
 								</h2>
 
 								{isHost && (
 									<div className="flex space-x-2">
 										{!room.isRevealed ? (
-											<button
-												className="btn-primary"
+											<Button
+												variant="primary"
 												onClick={handleRevealVotes}
 												disabled={!allVoted}
-												style={{ width: 'auto', padding: '0.5rem 1rem' }}
+												className="whitespace-nowrap"
+												fullWidth={false}
 											>
 												Reveal Votes
-											</button>
+											</Button>
 										) : (
-											<button
-												className="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md px-4 py-2"
+											<Button
+												variant="secondary"
 												onClick={handleResetVoting}
-												style={{ width: 'auto' }}
+												fullWidth={false}
+												className="whitespace-nowrap"
 											>
 												Reset Voting
-											</button>
+											</Button>
 										)}
 									</div>
 								)}
@@ -236,7 +246,7 @@ export default function RoomPage() {
 						{isHost && <ShareRoom roomId={room.id} />}
 
 						<Card>
-							<h2 className="text-lg font-medium mb-4">
+							<h2 className="text-lg font-medium mb-4 text-primary-700 dark:text-primary-400">
 								Participants ({room.participants.length})
 							</h2>
 

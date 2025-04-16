@@ -25,6 +25,7 @@ const VotingCard: React.FC<VotingCardProps> = ({
             onClick={handleClick}
             disabled={disabled}
             type="button"
+            aria-pressed={selected}
         >
             {value}
         </button>

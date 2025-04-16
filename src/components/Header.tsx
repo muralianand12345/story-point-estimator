@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRoom } from '../context/RoomContext';
 import Button from './Button';
 import ThemeToggle from './ThemeToggle';
+import Logo from './Logo';
 
 const Header: React.FC = () => {
     const { room, leaveRoom } = useRoom();
@@ -20,8 +21,8 @@ const Header: React.FC = () => {
         return (
             <header className="app-header py-4 px-6">
                 <div className="max-w-7xl mx-auto flex justify-between items-center">
-                    <Link href="/" className="text-xl font-bold text-purple-500">
-                        Story Point Estimator
+                    <Link href="/" className="text-primary-600 dark:text-primary-400">
+                        <span className="text-xl font-bold">STORY POINTS</span>
                     </Link>
                 </div>
             </header>
@@ -31,8 +32,8 @@ const Header: React.FC = () => {
     return (
         <header className="app-header py-4 px-6">
             <div className="max-w-7xl mx-auto flex justify-between items-center">
-                <Link href="/" className="text-xl font-bold text-purple-500">
-                    Story Point Estimator
+                <Link href="/" aria-label="Go to homepage">
+                    <Logo showText={true} size="md" />
                 </Link>
 
                 <div className="flex items-center space-x-4">

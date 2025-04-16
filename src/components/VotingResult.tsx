@@ -12,28 +12,28 @@ const VotingResult: React.FC<VotingResultProps> = ({ votes, votingOptions }) => 
 
     return (
         <Card className="mt-6">
-            <h3 className="text-lg font-medium mb-4">Voting Results</h3>
+            <h3 className="text-lg font-medium mb-4 text-primary-700 dark:text-primary-400">Voting Results</h3>
 
             <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                <div className="p-3 bg-primary-50 dark:bg-primary-900/20 rounded-md">
                     <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Average</h4>
-                    <p className="text-2xl font-bold">{stats.average}</p>
+                    <p className="text-2xl font-bold text-primary-700 dark:text-primary-400">{stats.average}</p>
                 </div>
-                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                <div className="p-3 bg-primary-50 dark:bg-primary-900/20 rounded-md">
                     <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Consensus</h4>
-                    <p className="text-2xl font-bold">{stats.mode || '-'}</p>
+                    <p className="text-2xl font-bold text-primary-700 dark:text-primary-400">{stats.mode || '-'}</p>
                 </div>
-                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                <div className="p-3 bg-primary-50 dark:bg-primary-900/20 rounded-md">
                     <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Min</h4>
-                    <p className="text-2xl font-bold">{stats.min}</p>
+                    <p className="text-2xl font-bold text-primary-700 dark:text-primary-400">{stats.min}</p>
                 </div>
-                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                <div className="p-3 bg-primary-50 dark:bg-primary-900/20 rounded-md">
                     <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Max</h4>
-                    <p className="text-2xl font-bold">{stats.max}</p>
+                    <p className="text-2xl font-bold text-primary-700 dark:text-primary-400">{stats.max}</p>
                 </div>
             </div>
 
-            <h4 className="text-sm font-medium mb-2">Distribution</h4>
+            <h4 className="text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Distribution</h4>
             <div className="flex justify-between items-end space-x-2 h-32">
                 {votingOptions.map(option => {
                     const count = stats.distribution[option] || 0;
@@ -46,7 +46,7 @@ const VotingResult: React.FC<VotingResultProps> = ({ votes, votingOptions }) => 
                                 className="w-full rounded-t"
                                 style={{
                                     height: `${Math.max(percentage, 4)}%`,
-                                    backgroundColor: count > 0 ? '#C0AEFE' : 'rgb(229, 231, 235)'
+                                    backgroundColor: count > 0 ? 'var(--primary-600)' : 'var(--border-color)'
                                 }}
                             />
                             <div className="text-xs font-medium mt-1">{option}</div>
