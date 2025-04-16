@@ -23,6 +23,8 @@ const RoomPage = () => {
 			? params.id[0]
 			: '';
 
+	const formattedRoomId = roomId.trim().toUpperCase();
+
 	const {
 		room,
 		participantId,
@@ -31,12 +33,15 @@ const RoomPage = () => {
 		resetVotes,
 		refreshRoom,
 		error,
+		joinRoom,
 	} = useRoom();
 
 	const [selectedVote, setSelectedVote] = useState<string | null>(null);
 	const [isClient, setIsClient] = useState(false);
 	const initialSetupDone = useRef(false);
 	const [isLoading, setIsLoading] = useState(true);
+	const [reconnectAttempt, setReconnectAttempt] = useState(0);
+	const [isRejoining, setIsRejoining] = useState(false);
 
 	// Set isClient to true once mounted
 	useEffect(() => {
@@ -46,11 +51,11 @@ const RoomPage = () => {
 
 	// Initial setup - fetch room data
 	useEffect(() => {
-		if (!roomId || !isClient) return;
+		if (!formattedRoomId || !isClient) return;
 		if (initialSetupDone.current) return;
 
 		// Initial fetch of room data
-		refreshRoom(roomId).then(() => {
+		refreshRoom(formattedRoomId).then(() => {
 			setIsLoading(false);
 			initialSetupDone.current = true;
 		}).catch(err => {
@@ -58,7 +63,18 @@ const RoomPage = () => {
 			setIsLoading(false);
 			initialSetupDone.current = true;
 		});
-	}, [roomId, refreshRoom, isClient]);
+	}, [formattedRoomId, refreshRoom, isClient]);
+
+	// Auto-refresh the room data more frequently to detect host changes
+	useEffect(() => {
+		if (!isClient || !formattedRoomId) return;
+
+		const intervalId = setInterval(() => {
+			refreshRoom(formattedRoomId).catch(console.error);
+		}, 2000); // Poll every 2 seconds
+
+		return () => clearInterval(intervalId);
+	}, [isClient, formattedRoomId, refreshRoom]);
 
 	// Update selected vote when room changes
 	useEffect(() => {
@@ -84,6 +100,18 @@ const RoomPage = () => {
 		}
 	}, [room, router, isClient, isLoading]);
 
+	// Attempt automatic rejoin if we have the participant info but no participantId
+	useEffect(() => {
+		if (!isClient || isLoading || !room || participantId || isRejoining) return;
+
+		const storedParticipantName = localStorage.getItem('participantName');
+		if (storedParticipantName) {
+			console.log("Attempting automatic rejoin with stored name:", storedParticipantName);
+			setIsRejoining(true);
+			handleRejoin();
+		}
+	}, [isClient, isLoading, room, participantId]);
+
 	// Handle vote selection
 	const handleVoteSelect = (vote: string) => {
 		if (!participantId) {
@@ -104,6 +132,34 @@ const RoomPage = () => {
 	const handleResetVoting = () => {
 		resetVotes();
 		setSelectedVote(null);
+	};
+
+	// Handle rejoin attempt
+	const handleRejoin = async () => {
+		if (!room) return;
+
+		// Get participant name from localStorage if possible
+		const storedParticipantName = localStorage.getItem('participantName');
+		if (!storedParticipantName) {
+			// If we don't have the name stored, redirect to join page
+			router.push(`/join/${formattedRoomId}`);
+			return;
+		}
+
+		setReconnectAttempt(prev => prev + 1);
+		setIsRejoining(true);
+
+		try {
+			const success = await joinRoom(formattedRoomId, storedParticipantName);
+			if (success) {
+				// Force refresh after successful rejoin
+				await refreshRoom(formattedRoomId);
+			}
+		} catch (error) {
+			console.error("Error during rejoin:", error);
+		} finally {
+			setIsRejoining(false);
+		}
 	};
 
 	// Show loading state
@@ -142,7 +198,7 @@ const RoomPage = () => {
 		);
 	}
 
-	// Show error if there's a participant issue
+	// Show participant connection issue with rejoin option
 	if (!participantId) {
 		return (
 			<div className="min-h-screen">
@@ -153,12 +209,28 @@ const RoomPage = () => {
 						<p className="text-gray-600 dark:text-gray-400 mb-6">
 							You&apos;re not properly connected to this room. Please try joining again.
 						</p>
-						<Button
-							onClick={() => router.push(`/join/${roomId}`)}
-							variant="primary"
-						>
-							Rejoin Room
-						</Button>
+						<div className="flex space-x-4">
+							<Button
+								onClick={handleRejoin}
+								variant="primary"
+								className="flex-1"
+								disabled={isRejoining || reconnectAttempt > 3}
+							>
+								{isRejoining ? 'Rejoining...' : 'Rejoin Room'}
+							</Button>
+							<Button
+								onClick={() => router.push(`/join/${formattedRoomId}`)}
+								variant="outline"
+								className="flex-1"
+							>
+								Join With New Name
+							</Button>
+						</div>
+						{reconnectAttempt > 3 && (
+							<p className="mt-4 text-sm text-yellow-600 dark:text-yellow-400">
+								Multiple rejoin attempts failed. You may need to join with a new name.
+							</p>
+						)}
 					</Card>
 				</main>
 			</div>

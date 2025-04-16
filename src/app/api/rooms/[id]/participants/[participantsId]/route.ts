@@ -71,6 +71,23 @@ const DELETE = async (
 			);
 		}
 
+		// First, check if the participant is the host
+		const participant = await prisma.participant.findUnique({
+			where: {
+				id: participantId,
+				roomId: roomId,
+			},
+		});
+
+		if (!participant) {
+			return NextResponse.json(
+				{ error: 'Participant not found' },
+				{ status: 404 },
+			);
+		}
+
+		const isHost = participant.isHost;
+
 		// Delete the participant
 		await prisma.participant.delete({
 			where: {
@@ -97,11 +114,8 @@ const DELETE = async (
 			return NextResponse.json({ roomDeleted: true });
 		}
 
-		// If host was removed, assign a new host
-		const hasHost = remainingParticipants.some(
-			(p: { isHost: boolean }) => p.isHost,
-		);
-		if (!hasHost && remainingParticipants.length > 0) {
+		// If the deleted participant was the host, assign a new host
+		if (isHost && remainingParticipants.length > 0) {
 			await prisma.participant.update({
 				where: {
 					id: remainingParticipants[0].id,

@@ -86,6 +86,33 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, [isClient]);
 
+    // Handle beforeunload event to clean up when user closes tab/browser
+    useEffect(() => {
+        if (!isClient || !room?.id || !participantId) return;
+
+        // Handler for when user is about to leave the page
+        const handleBeforeUnload = async (event: BeforeUnloadEvent) => {
+            // Standard message for confirmation dialog (most browsers don't show custom messages anymore)
+            event.preventDefault();
+            event.returnValue = '';
+
+            try {
+                // Call our API to remove the participant
+                await api.leaveRoom(room.id, participantId);
+            } catch (error) {
+                console.error('Error during auto-cleanup:', error);
+            }
+        };
+
+        // Add listener
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        // Clean up listener when component unmounts or room/participant changes
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [isClient, room?.id, participantId]);
+
     // Set up polling when in a room
     useEffect(() => {
         if (!isClient || !room?.id) return;
@@ -121,6 +148,9 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 localStorage.setItem('userId', newUserId);
             }
 
+            // Store host name in localStorage
+            localStorage.setItem('participantName', hostName);
+
             const newRoom = await api.createRoom(name, description, hostName);
 
             // Find the host participant (created along with the room)
@@ -150,6 +180,9 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setError(null);
 
         try {
+            // Store participant name in localStorage
+            localStorage.setItem('participantName', participantName);
+
             const result = await api.joinRoom(roomId, participantName);
 
             if (!result) {

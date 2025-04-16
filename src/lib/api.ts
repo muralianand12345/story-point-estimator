@@ -76,6 +76,27 @@ const joinRoom = async (
     try {
         const formattedRoomId = roomId.trim().toUpperCase();
 
+        // First, try to find if we have a participantId in localStorage
+        const storedParticipantId = localStorage.getItem('participantId');
+
+        // Check if we're rejoining with the same participantId
+        if (storedParticipantId) {
+            // Verify if this participant still exists in the room
+            const room = await getRoom(formattedRoomId);
+            if (room) {
+                const participantExists = room.participants.some(p => p.id === storedParticipantId);
+
+                if (participantExists) {
+                    // If participant still exists, return the participant and room
+                    const participant = room.participants.find(p => p.id === storedParticipantId);
+                    if (participant) {
+                        return { participant, room };
+                    }
+                }
+            }
+        }
+
+        // If participant doesn't exist or we're joining fresh, create a new participant
         const response = await fetch(`/api/rooms/${formattedRoomId}/participants`, {
             method: 'POST',
             headers: {
