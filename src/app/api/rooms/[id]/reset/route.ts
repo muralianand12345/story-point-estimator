@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getParamId } from '@/utils/apiUtils';
+import { IContext } from '@/types';
 
 // Reset all votes in a room
 export async function POST(
 	request: Request,
-	context: { params: { id: Promise<string> } }
+	context: IContext
 ) {
 	try {
 		// Extract the ID

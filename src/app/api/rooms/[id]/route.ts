@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getParamId } from '@/utils/apiUtils';
+import { IContext } from '@/types';
 
 // Get a specific room by ID
 export async function GET(
 	request: Request,
-	context: { params: { id: Promise<string> } }
+	context: IContext
 ) {
 	try {
 		// Extract the ID
@@ -42,7 +43,7 @@ export async function GET(
 // Update room properties
 export async function PATCH(
 	request: Request,
-	context: { params: { id: Promise<string> } }
+	context: IContext
 ) {
 	try {
 		// Extract the ID
@@ -81,7 +82,7 @@ export async function PATCH(
 // Delete a room
 export async function DELETE(
 	request: Request,
-	context: { params: { id: Promise<string> } }
+	context: IContext
 ) {
 	try {
 		// Extract the ID

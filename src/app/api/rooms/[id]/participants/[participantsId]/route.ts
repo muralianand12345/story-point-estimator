@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getParamId } from '@/utils/apiUtils';
+import { IContext } from '@/types';
 
 // Submit a vote for a participant
 export async function PATCH(
 	request: Request,
-	context: { params: { id: Promise<string>; participantsId: Promise<string> } }
+	context: IContext
 ) {
 	try {
 		// Extract the IDs
@@ -57,7 +58,7 @@ export async function PATCH(
 // Remove a participant from a room
 export async function DELETE(
 	request: Request,
-	context: { params: { id: Promise<string>; participantsId: Promise<string> } }
+	context: IContext
 ) {
 	try {
 		// Extract the IDs
