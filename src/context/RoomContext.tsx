@@ -155,14 +155,25 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isClient || !room?.id || !participantId) return;
 
         // Handler for when user is about to leave the page
-        const handleBeforeUnload = () => {
-            // Store the current state so we can reconnect later
-            localStorage.setItem('currentRoomId', room.id);
-            localStorage.setItem('participantId', participantId);
+        const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+            // Standard message for confirmation dialog
+            event.preventDefault();
+            event.returnValue = '';
 
-            // Note: We're not calling leaveRoom() here anymore to allow reconnection
-            // If you want auto-cleanup, you would need to implement a server-side
-            // solution that detects inactive sessions
+            try {
+                // Use a synchronous approach for the beforeunload event
+                // We can't guarantee async calls will complete
+                const xhr = new XMLHttpRequest();
+                xhr.open('DELETE', `/api/rooms/${room.id}/participants/${participantId}`, false);
+                xhr.send();
+
+                // Clear local storage
+                localStorage.removeItem('participantId');
+                localStorage.removeItem('currentRoomId');
+                // We keep participantName to make rejoining easier
+            } catch (error) {
+                console.error('Error during cleanup on page close:', error);
+            }
         };
 
         // Add listener
@@ -176,7 +187,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Set up polling when in a room
     useEffect(() => {
-        if (!isClient || !room?.id) return;
+        if (!isClient || !room?.id || !participantId) return;
 
         // Clear any existing interval
         if (pollingInterval) {
@@ -186,7 +197,22 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Set up new polling interval
         const intervalId = setInterval(() => {
             refreshRoom(room.id).catch(console.error);
-        }, 3000); // Poll every 3 seconds
+
+            // Send a heartbeat update
+            try {
+                fetch(`/api/rooms/${room.id}/participants/${participantId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ timestamp: new Date().toISOString() }),
+                }).catch(error => {
+                    console.error('Error sending heartbeat:', error);
+                });
+            } catch (error) {
+                console.error('Error in heartbeat:', error);
+            }
+        }, 5000); // Poll every 5 seconds
 
         setPollingInterval(intervalId);
 
@@ -195,7 +221,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
             clearInterval(intervalId);
             setPollingInterval(null);
         };
-    }, [isClient, room?.id]);
+    }, [isClient, room?.id, participantId]);
 
     // Create a new room
     const createRoom = async (name: string, description: string, hostName: string): Promise<string> => {

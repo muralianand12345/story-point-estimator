@@ -31,8 +31,12 @@ model Participant {
   vote      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  lastActive DateTime @default(now())
+  isActive  Boolean  @default(true)
   roomId    String
   room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@index([roomId])
+  @@index([lastActive])
+  @@index([isActive])
 }

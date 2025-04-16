@@ -21,7 +21,7 @@ const PATCH = async (
 		}
 
 		const body = await request.json();
-		const { vote } = body;
+		const { vote, timestamp } = body;
 
 		// Check if participant exists
 		const participant = await prisma.participant.findUnique({
@@ -38,16 +38,70 @@ const PATCH = async (
 			);
 		}
 
-		// Update participant's vote
-		await prisma.participant.update({
-			where: {
-				id: participantId,
-				roomId: roomId,
-			},
-			data: {
-				vote,
-			},
-		});
+		// Update participant data
+		const updateData: any = {};
+
+		// Only update vote if it's provided
+		if (vote !== undefined) {
+			updateData.vote = vote;
+		}
+
+		// If this is a heartbeat/activity update
+		if (timestamp) {
+			// With the current schema, we don't need to do anything special
+			// The updatedAt field will automatically be updated when we make any change
+			// We'll add a small update to trigger the updatedAt timestamp update
+			await prisma.participant.update({
+				where: {
+					id: participantId,
+					roomId: roomId,
+				},
+				data: {
+					// Just update with the current values to trigger updatedAt update
+					name: participant.name
+				},
+			});
+		}
+
+		// Only perform the update if there's a vote change
+		if (Object.keys(updateData).length > 0) {
+			await prisma.participant.update({
+				where: {
+					id: participantId,
+					roomId: roomId,
+				},
+				data: updateData,
+			});
+		}
+
+		// Clean up inactive participants (those who haven't updated in 30 seconds)
+		const thirtySecondsAgo = new Date(Date.now() - 30 * 1000);
+
+		try {
+			await prisma.participant.deleteMany({
+				where: {
+					roomId: roomId,
+					updatedAt: {
+						lt: thirtySecondsAgo
+					},
+					isHost: false  // Never auto-remove the host
+				}
+			});
+		} catch (error) {
+			// If isHost field isn't available, use a more basic cleanup
+			try {
+				await prisma.participant.deleteMany({
+					where: {
+						roomId: roomId,
+						updatedAt: {
+							lt: thirtySecondsAgo
+						}
+					}
+				});
+			} catch (innerError) {
+				console.error('Error cleaning up inactive participants:', innerError);
+			}
+		}
 
 		// Return the updated room with participants
 		const updatedRoom = await prisma.room.findUnique({
@@ -61,9 +115,9 @@ const PATCH = async (
 
 		return NextResponse.json(updatedRoom);
 	} catch (error) {
-		console.error('Error submitting vote:', error);
+		console.error('Error updating participant:', error);
 		return NextResponse.json(
-			{ error: 'Failed to submit vote' },
+			{ error: 'Failed to update participant' },
 			{ status: 500 },
 		);
 	}
@@ -194,6 +248,35 @@ const GET = async (
 			return NextResponse.json(
 				{ exists: false }
 			);
+		}
+
+		// Clean up inactive participants (those who haven't updated in 30 seconds)
+		const thirtySecondsAgo = new Date(Date.now() - 30 * 1000);
+
+		try {
+			await prisma.participant.deleteMany({
+				where: {
+					roomId: roomId,
+					updatedAt: {
+						lt: thirtySecondsAgo
+					},
+					isHost: false  // Never auto-remove the host
+				}
+			});
+		} catch (error) {
+			// If isHost field isn't available, try without it
+			try {
+				await prisma.participant.deleteMany({
+					where: {
+						roomId: roomId,
+						updatedAt: {
+							lt: thirtySecondsAgo
+						}
+					}
+				});
+			} catch (innerError) {
+				console.error('Error cleaning up inactive participants:', innerError);
+			}
 		}
 
 		// Return the participant and room

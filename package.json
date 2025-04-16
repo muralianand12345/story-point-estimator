@@ -11,7 +11,8 @@
         "db:generate": "prisma generate",
         "db:studio": "prisma studio",
         "db:seed": "ts-node --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} scripts/seed-db.ts",
-        "db:reset": "prisma migrate reset --force"
+        "db:reset": "prisma migrate reset --force",
+        "cleanup": "ts-node --compiler-options {\\\"module\\\":\\\"CommonJS\\\"} scripts/cleanup-inactive.ts"
     },
     "dependencies": {
         "@prisma/client": "^6.6.0",
