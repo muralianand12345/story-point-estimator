@@ -3,11 +3,10 @@ import prisma from '@/lib/prisma';
 import { getParamId } from '@/utils/apiUtils';
 import { IContext } from '@/types';
 
-// Get a specific room by ID
-export async function GET(
+const GET = async (
 	request: Request,
 	context: IContext
-) {
+) => {
 	try {
 		// Extract the ID
 		const params = await context.params;
@@ -40,11 +39,10 @@ export async function GET(
 	}
 }
 
-// Update room properties
-export async function PATCH(
+const PATCH = async (
 	request: Request,
 	context: IContext
-) {
+) => {
 	try {
 		// Extract the ID
 		const params = await context.params;
@@ -79,11 +77,10 @@ export async function PATCH(
 	}
 }
 
-// Delete a room
-export async function DELETE(
+const DELETE = async (
 	request: Request,
 	context: IContext
-) {
+) => {
 	try {
 		// Extract the ID
 		const params = await context.params;
@@ -108,3 +105,5 @@ export async function DELETE(
 		);
 	}
 }
+
+export { GET, PATCH, DELETE };

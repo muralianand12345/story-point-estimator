@@ -9,7 +9,7 @@ import { useRoom } from '../../../context/RoomContext';
 import Button from '../../../components/Button';
 import Logo from '../../../components/Logo';
 
-export default function JoinPage() {
+const JoinPage = () => {
     const params = useParams();
     const router = useRouter();
 
@@ -154,3 +154,5 @@ export default function JoinPage() {
         </div>
     );
 }
+
+export default JoinPage;

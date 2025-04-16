@@ -9,7 +9,7 @@ import { useRoom } from '../context/RoomContext';
 import Logo from '../components/Logo';
 import Button from '../components/Button';
 
-export default function Home() {
+const Home = () => {
 	const router = useRouter();
 	const { createRoom, joinRoom, checkRoomExists } = useRoom();
 	const [isClient, setIsClient] = useState(false);
@@ -196,3 +196,5 @@ export default function Home() {
 		</div>
 	);
 }
+
+export default Home;

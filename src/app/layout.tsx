@@ -19,11 +19,11 @@ export const metadata: Metadata = {
     description: "Collaborative story point estimation for agile teams",
 };
 
-export default function RootLayout({
+const RootLayout = async ({
     children,
 }: Readonly<{
     children: React.ReactNode;
-}>) {
+}>) => {
     return (
         <html lang="en" suppressHydrationWarning>
             <body
@@ -36,3 +36,5 @@ export default function RootLayout({
         </html>
     );
 }
+
+export default RootLayout;

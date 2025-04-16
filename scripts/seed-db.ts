@@ -3,7 +3,7 @@ import { generateRoomCode } from '../src/utils/roomUtils';
 
 const prisma = new PrismaClient();
 
-async function main() {
+const main = async () => {
     console.log('Starting database seed...');
 
     // Clean up any existing data

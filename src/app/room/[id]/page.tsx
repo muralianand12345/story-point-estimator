@@ -12,7 +12,7 @@ import ShareRoom from '../../../components/ShareRoom';
 import Button from '../../../components/Button';
 import Logo from '../../../components/Logo';
 
-export default function RoomPage() {
+const RoomPage = () => {
 	const params = useParams();
 	const router = useRouter();
 
@@ -270,3 +270,5 @@ export default function RoomPage() {
 		</div>
 	);
 }
+
+export default RoomPage;

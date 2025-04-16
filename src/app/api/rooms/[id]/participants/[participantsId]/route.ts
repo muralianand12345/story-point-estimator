@@ -3,11 +3,10 @@ import prisma from '@/lib/prisma';
 import { getParamId } from '@/utils/apiUtils';
 import { IContext } from '@/types';
 
-// Submit a vote for a participant
-export async function PATCH(
+const PATCH = async (
 	request: Request,
 	context: IContext
-) {
+) => {
 	try {
 		// Extract the IDs
 		const params = await context.params;
@@ -55,11 +54,10 @@ export async function PATCH(
 	}
 }
 
-// Remove a participant from a room
-export async function DELETE(
+const DELETE = async (
 	request: Request,
 	context: IContext
-) {
+) => {
 	try {
 		// Extract the IDs
 		const params = await context.params;
@@ -136,3 +134,5 @@ export async function DELETE(
 		);
 	}
 }
+
+export { PATCH, DELETE };

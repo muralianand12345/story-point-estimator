@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { generateRoomCode } from '@/utils/roomUtils';
 
-export async function POST(request: Request) {
+const POST = async (request: Request) => {
     try {
         const body = await request.json();
         const { name, description, hostName } = body;
@@ -45,8 +45,7 @@ export async function POST(request: Request) {
     }
 }
 
-// Get all rooms (could be limited/paginated in a real app)
-export async function GET() {
+const GET = async () => {
     try {
         const rooms = await prisma.room.findMany({
             include: {
@@ -66,3 +65,5 @@ export async function GET() {
         );
     }
 }
+
+export { POST, GET };

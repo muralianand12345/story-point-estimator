@@ -21,11 +21,11 @@ export interface Room {
 }
 
 // Create a new room
-export async function createRoom(
+const createRoom = async (
     name: string,
     description: string,
     hostName: string
-): Promise<Room> {
+): Promise<Room> => {
     const response = await fetch('/api/rooms', {
         method: 'POST',
         headers: {
@@ -43,7 +43,7 @@ export async function createRoom(
 }
 
 // Get a room by ID
-export async function getRoom(roomId: string): Promise<Room | null> {
+const getRoom = async (roomId: string): Promise<Room | null> => {
     try {
         const response = await fetch(`/api/rooms/${roomId}`);
 
@@ -64,10 +64,10 @@ export async function getRoom(roomId: string): Promise<Room | null> {
 }
 
 // Join a room as a participant
-export async function joinRoom(
+const joinRoom = async (
     roomId: string,
     participantName: string
-): Promise<{ participant: Participant; room: Room } | null> {
+): Promise<{ participant: Participant; room: Room } | null> => {
     if (!roomId || !participantName) {
         console.error('Invalid room ID or participant name for joining room');
         return null;
@@ -98,10 +98,10 @@ export async function joinRoom(
 }
 
 // Leave a room (remove participant)
-export async function leaveRoom(
+const leaveRoom = async (
     roomId: string,
     participantId: string
-): Promise<{ roomDeleted: boolean; room?: Room }> {
+): Promise<{ roomDeleted: boolean; room?: Room }> => {
     const response = await fetch(
         `/api/rooms/${roomId}/participants/${participantId}`,
         {
@@ -118,11 +118,11 @@ export async function leaveRoom(
 }
 
 // Submit a vote
-export async function submitVote(
+const submitVote = async (
     roomId: string,
     participantId: string,
     vote: string
-): Promise<Room> {
+): Promise<Room> => {
 
     if (!roomId || !participantId) {
         throw new Error('Invalid room or participant ID');
@@ -154,7 +154,7 @@ export async function submitVote(
 }
 
 // Reveal votes
-export async function revealVotes(roomId: string): Promise<Room> {
+const revealVotes = async (roomId: string): Promise<Room> => {
     const response = await fetch(`/api/rooms/${roomId}`, {
         method: 'PATCH',
         headers: {
@@ -172,7 +172,7 @@ export async function revealVotes(roomId: string): Promise<Room> {
 }
 
 // Reset votes
-export async function resetVotes(roomId: string): Promise<Room> {
+const resetVotes = async (roomId: string): Promise<Room> => {
     const response = await fetch(`/api/rooms/${roomId}/reset`, {
         method: 'POST',
     });
@@ -186,7 +186,7 @@ export async function resetVotes(roomId: string): Promise<Room> {
 }
 
 // Check if a room exists
-export async function checkRoomExists(roomId: string): Promise<boolean> {
+const checkRoomExists = async (roomId: string): Promise<boolean> => {
     try {
         const room = await getRoom(roomId);
         return !!room;
@@ -194,3 +194,14 @@ export async function checkRoomExists(roomId: string): Promise<boolean> {
         return false;
     }
 }
+
+export {
+    createRoom,
+    getRoom,
+    joinRoom,
+    leaveRoom,
+    submitVote,
+    revealVotes,
+    resetVotes,
+    checkRoomExists,
+};

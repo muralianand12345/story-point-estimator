@@ -14,7 +14,7 @@ interface ClientOnlyProps {
  * @param children The content to be rendered on the client side
  * @param fallback Optional content to be shown during server-side rendering
  */
-export default function ClientOnly({ children, fallback = null }: ClientOnlyProps) {
+const ClientOnly = ({ children, fallback = null }: ClientOnlyProps) => {
     const [isClient, setIsClient] = useState(false);
 
     useEffect(() => {
@@ -23,3 +23,5 @@ export default function ClientOnly({ children, fallback = null }: ClientOnlyProp
 
     return isClient ? <>{children}</> : <>{fallback}</>;
 }
+
+export default ClientOnly;

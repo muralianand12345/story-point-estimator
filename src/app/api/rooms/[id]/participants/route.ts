@@ -3,11 +3,10 @@ import prisma from '@/lib/prisma';
 import { getParamId } from '@/utils/apiUtils';
 import { IContext } from '@/types';
 
-// Add a participant to a room
-export async function POST(
+const POST = async (
 	request: Request,
 	context: IContext
-) {
+) => {
 	try {
 		// Extract the ID
 		const params = await context.params;
@@ -71,3 +70,5 @@ export async function POST(
 		);
 	}
 }
+
+export { POST };
