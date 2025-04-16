@@ -6,7 +6,7 @@ import { useRoom } from '../../../context/RoomContext';
 import Header from '../../../components/Header';
 import Card from '../../../components/Card';
 import VotingCard from '../../../components/VotingCard';
-import ParticipantCard from '../../../components/ParticipantCard';
+import ParticipantList from '../../../components/ParticipantList';
 import VotingResult from '../../../components/VotingResult';
 import ShareRoom from '../../../components/ShareRoom';
 import Button from '../../../components/Button';
@@ -322,19 +322,11 @@ const RoomPage = () => {
 								Participants ({room.participants.length})
 							</h2>
 
-							<div className="space-y-2">
-								{room.participants.map((participant) => (
-									<ParticipantCard
-										key={participant.id}
-										name={participant.name}
-										isHost={participant.isHost}
-										hasVoted={participant.vote !== null}
-										vote={participant.vote}
-										isRevealed={room.isRevealed}
-										isSelf={participant.id === participantId}
-									/>
-								))}
-							</div>
+							<ParticipantList
+								participants={room.participants}
+								isRevealed={room.isRevealed}
+								participantId={participantId}
+							/>
 						</Card>
 					</div>
 				</div>

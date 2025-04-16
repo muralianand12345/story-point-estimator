@@ -31,10 +31,29 @@ const POST = async (
 			where: {
 				id: roomId,
 			},
+			include: {
+				participants: true,
+			},
 		});
 
 		if (!room) {
 			return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+		}
+
+		// Check for duplicate non-host participant
+		const existingParticipant = room.participants.find(
+			p => p.name === name && !p.isHost
+		);
+
+		if (existingParticipant) {
+			// Return the existing participant instead of creating a new one
+			return NextResponse.json(
+				{
+					participant: existingParticipant,
+					room: room,
+				},
+				{ status: 200 },
+			);
 		}
 
 		// Add participant to the room

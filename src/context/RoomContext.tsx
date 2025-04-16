@@ -183,6 +183,23 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Store participant name in localStorage
             localStorage.setItem('participantName', participantName);
 
+            // First check if the room already has a participant with the same name
+            const existingRoom = await api.getRoom(roomId);
+            if (existingRoom) {
+                const existingParticipant = existingRoom.participants.find(
+                    p => p.name === participantName && !p.isHost
+                );
+
+                // If a participant with the same name exists, use that instead of creating a new one
+                if (existingParticipant) {
+                    setRoom(existingRoom);
+                    setParticipantId(existingParticipant.id);
+                    localStorage.setItem('currentRoomId', roomId);
+                    localStorage.setItem('participantId', existingParticipant.id);
+                    return true;
+                }
+            }
+
             const result = await api.joinRoom(roomId, participantName);
 
             if (!result) {
