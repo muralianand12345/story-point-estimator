@@ -61,8 +61,9 @@ export async function DELETE(
 ) {
 	try {
 		// Extract the IDs
-		const roomId = await getParamId(context.params.id);
-		const participantId = await getParamId(context.params.participantsId);
+		const params = await context.params;
+		const roomId = await getParamId(params.id);
+		const participantId = await getParamId(params.participantsId);
 
 		if (!roomId || !participantId) {
 			return NextResponse.json(

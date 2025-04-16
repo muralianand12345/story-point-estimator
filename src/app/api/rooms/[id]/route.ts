@@ -46,7 +46,8 @@ export async function PATCH(
 ) {
 	try {
 		// Extract the ID
-		const roomId = await getParamId(context.params.id);
+		const params = await context.params;
+		const roomId = await getParamId(params.id);
 
 		if (!roomId) {
 			return NextResponse.json({ error: 'Invalid room ID' }, { status: 400 });
@@ -84,7 +85,8 @@ export async function DELETE(
 ) {
 	try {
 		// Extract the ID
-		const roomId = await getParamId(context.params.id);
+		const params = await context.params;
+		const roomId = await getParamId(params.id);
 
 		if (!roomId) {
 			return NextResponse.json({ error: 'Invalid room ID' }, { status: 400 });
