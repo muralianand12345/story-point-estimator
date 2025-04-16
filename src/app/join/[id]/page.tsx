@@ -26,11 +26,17 @@ const JoinPage = () => {
     const [error, setError] = useState('');
     const [roomExists, setRoomExists] = useState(true);
     const [isClient, setIsClient] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const initialCheckDone = useRef(false);
 
     // Set isClient once component mounts
     useEffect(() => {
         setIsClient(true);
+        // Try to restore name from localStorage
+        const storedName = localStorage.getItem('participantName');
+        if (storedName) {
+            setName(storedName);
+        }
     }, []);
 
     // Check if room exists and if user is already in the room
@@ -62,22 +68,32 @@ const JoinPage = () => {
     const handleJoinRoom = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setIsSubmitting(true);
 
         if (!name.trim()) {
             setError('Please enter your name');
+            setIsSubmitting(false);
             return;
         }
 
         if (!roomExists) {
             setError('This room no longer exists');
+            setIsSubmitting(false);
             return;
         }
 
-        const success = await joinRoom(formattedRoomId, name.trim());
-        if (success) {
-            router.push(`/room/${formattedRoomId}`);
-        } else {
-            setError('Failed to join room. Please try again.');
+        try {
+            const success = await joinRoom(formattedRoomId, name.trim());
+            if (success) {
+                router.push(`/room/${formattedRoomId}`);
+            } else {
+                setError('Failed to join room. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error joining room:', error);
+            setError('An error occurred while joining the room.');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -137,6 +153,7 @@ const JoinPage = () => {
                                 onClick={() => router.push('/')}
                                 variant="outline"
                                 className="flex-1"
+                                disabled={isSubmitting}
                             >
                                 Cancel
                             </Button>
@@ -144,8 +161,9 @@ const JoinPage = () => {
                                 type="submit"
                                 variant="primary"
                                 className="flex-1"
+                                disabled={isSubmitting}
                             >
-                                Join Room
+                                {isSubmitting ? 'Joining...' : 'Join Room'}
                             </Button>
                         </div>
                     </form>

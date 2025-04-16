@@ -96,6 +96,17 @@ const joinRoom = async (
             }
         }
 
+        // Check if a participant with the same name already exists in the room
+        const room = await getRoom(formattedRoomId);
+        if (room) {
+            const existingParticipant = room.participants.find(p => p.name === participantName);
+
+            if (existingParticipant) {
+                // If a participant with the same name exists, use that instead of creating a new one
+                return { participant: existingParticipant, room };
+            }
+        }
+
         // If participant doesn't exist or we're joining fresh, create a new participant
         const response = await fetch(`/api/rooms/${formattedRoomId}/participants`, {
             method: 'POST',

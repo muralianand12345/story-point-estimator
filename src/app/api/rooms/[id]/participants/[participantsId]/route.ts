@@ -23,6 +23,21 @@ const PATCH = async (
 		const body = await request.json();
 		const { vote } = body;
 
+		// Check if participant exists
+		const participant = await prisma.participant.findUnique({
+			where: {
+				id: participantId,
+				roomId: roomId,
+			},
+		});
+
+		if (!participant) {
+			return NextResponse.json(
+				{ error: 'Participant not found' },
+				{ status: 404 },
+			);
+		}
+
 		// Update participant's vote
 		await prisma.participant.update({
 			where: {
@@ -149,4 +164,60 @@ const DELETE = async (
 	}
 }
 
-export { PATCH, DELETE };
+// Add GET endpoint to check if a participant exists
+const GET = async (
+	request: Request,
+	context: IContext
+) => {
+	try {
+		// Extract the IDs
+		const params = await context.params;
+		const roomId = await getParamId(params.id);
+		const participantId = await getParamId(params.participantsId);
+
+		if (!roomId || !participantId) {
+			return NextResponse.json(
+				{ error: 'Invalid room or participant ID' },
+				{ status: 400 },
+			);
+		}
+
+		// Check if participant exists
+		const participant = await prisma.participant.findUnique({
+			where: {
+				id: participantId,
+				roomId: roomId,
+			},
+		});
+
+		if (!participant) {
+			return NextResponse.json(
+				{ exists: false }
+			);
+		}
+
+		// Return the participant and room
+		const room = await prisma.room.findUnique({
+			where: {
+				id: roomId,
+			},
+			include: {
+				participants: true,
+			},
+		});
+
+		return NextResponse.json({
+			exists: true,
+			participant,
+			room
+		});
+	} catch (error) {
+		console.error('Error checking participant:', error);
+		return NextResponse.json(
+			{ error: 'Failed to check participant' },
+			{ status: 500 },
+		);
+	}
+}
+
+export { GET, PATCH, DELETE };

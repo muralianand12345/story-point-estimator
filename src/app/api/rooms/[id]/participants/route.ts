@@ -40,9 +40,9 @@ const POST = async (
 			return NextResponse.json({ error: 'Room not found' }, { status: 404 });
 		}
 
-		// Check for duplicate non-host participant
+		// Check if a participant with this name already exists
 		const existingParticipant = room.participants.find(
-			p => p.name === name && !p.isHost
+			p => p.name === name
 		);
 
 		if (existingParticipant) {

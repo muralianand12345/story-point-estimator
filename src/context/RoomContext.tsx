@@ -54,6 +54,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [error, setError] = useState<string | null>(null);
     const [isClient, setIsClient] = useState<boolean>(false);
     const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+    const [reconnectionAttempt, setReconnectionAttempt] = useState<number>(0);
 
     // Set isClient to true once component mounts on client
     useEffect(() => {
@@ -82,26 +83,86 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Check if user was in a room
         const storedRoomId = localStorage.getItem('currentRoomId');
         if (storedRoomId) {
-            refreshRoom(storedRoomId).catch(console.error);
+            attemptRoomReconnection(storedRoomId).catch(console.error);
         }
     }, [isClient]);
+
+    // Attempt to reconnect to a room
+    const attemptRoomReconnection = async (roomId: string) => {
+        if (!isClient) return;
+
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            // First, check if the room still exists
+            const roomExists = await api.checkRoomExists(roomId);
+            if (!roomExists) {
+                // Clear room data if room no longer exists
+                localStorage.removeItem('currentRoomId');
+                localStorage.removeItem('participantId');
+                setRoom(null);
+                setParticipantId(null);
+                return;
+            }
+
+            // Get the latest room data
+            const latestRoom = await api.getRoom(roomId);
+            if (!latestRoom) return;
+
+            setRoom(latestRoom);
+
+            // If we have a stored participant ID, check if it's still valid
+            const storedParticipantId = localStorage.getItem('participantId');
+            const storedParticipantName = localStorage.getItem('participantName');
+
+            if (storedParticipantId) {
+                // Check if participant still exists in the room
+                const participantExists = latestRoom.participants.some(
+                    p => p.id === storedParticipantId
+                );
+
+                if (participantExists) {
+                    // Participant still exists, we can successfully reconnect
+                    setParticipantId(storedParticipantId);
+                    return;
+                }
+            }
+
+            // If we reach here, either participantId was not found or it's not valid anymore
+            // But if we have the name, we can try to rejoin with the same name
+            if (storedParticipantName) {
+                // Check if someone with this name already exists in the room
+                const nameExists = latestRoom.participants.some(
+                    p => p.name === storedParticipantName
+                );
+
+                if (nameExists && reconnectionAttempt < 3) {
+                    // Try to rejoin with the same name
+                    setReconnectionAttempt(prev => prev + 1);
+                    await joinRoom(roomId, storedParticipantName);
+                }
+            }
+        } catch (error) {
+            console.error('Error during room reconnection:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     // Handle beforeunload event to clean up when user closes tab/browser
     useEffect(() => {
         if (!isClient || !room?.id || !participantId) return;
 
         // Handler for when user is about to leave the page
-        const handleBeforeUnload = async (event: BeforeUnloadEvent) => {
-            // Standard message for confirmation dialog (most browsers don't show custom messages anymore)
-            event.preventDefault();
-            event.returnValue = '';
+        const handleBeforeUnload = () => {
+            // Store the current state so we can reconnect later
+            localStorage.setItem('currentRoomId', room.id);
+            localStorage.setItem('participantId', participantId);
 
-            try {
-                // Call our API to remove the participant
-                await api.leaveRoom(room.id, participantId);
-            } catch (error) {
-                console.error('Error during auto-cleanup:', error);
-            }
+            // Note: We're not calling leaveRoom() here anymore to allow reconnection
+            // If you want auto-cleanup, you would need to implement a server-side
+            // solution that detects inactive sessions
         };
 
         // Add listener
@@ -187,7 +248,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const existingRoom = await api.getRoom(roomId);
             if (existingRoom) {
                 const existingParticipant = existingRoom.participants.find(
-                    p => p.name === participantName && !p.isHost
+                    p => p.name === participantName
                 );
 
                 // If a participant with the same name exists, use that instead of creating a new one
@@ -360,8 +421,9 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     );
 
                     if (!participantExists) {
+                        // Participant no longer exists, but we'll keep the data in local storage
+                        // to allow for re-joining with the same name
                         setParticipantId(null);
-                        localStorage.removeItem('participantId');
                     }
                 }
             } else {
@@ -373,7 +435,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         } catch (err) {
             console.error('Error refreshing room:', err);
-            setError('Failed to refresh room data');
+            // Don't set an error here to avoid disrupting the UI during background refreshes
         }
     };
 

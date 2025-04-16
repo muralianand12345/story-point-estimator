@@ -32,8 +32,8 @@ const RoomPage = () => {
 		revealVotes,
 		resetVotes,
 		refreshRoom,
-		error,
 		joinRoom,
+		error,
 	} = useRoom();
 
 	const [selectedVote, setSelectedVote] = useState<string | null>(null);
@@ -65,7 +65,7 @@ const RoomPage = () => {
 		});
 	}, [formattedRoomId, refreshRoom, isClient]);
 
-	// Auto-refresh the room data more frequently to detect host changes
+	// Auto-refresh the room data
 	useEffect(() => {
 		if (!isClient || !formattedRoomId) return;
 
@@ -100,17 +100,20 @@ const RoomPage = () => {
 		}
 	}, [room, router, isClient, isLoading]);
 
-	// Attempt automatic rejoin if we have the participant info but no participantId
+	// Attempt automatic rejoin if we have a room but no participantId
 	useEffect(() => {
 		if (!isClient || isLoading || !room || participantId || isRejoining) return;
 
 		const storedParticipantName = localStorage.getItem('participantName');
-		if (storedParticipantName) {
+		const storedRoomId = localStorage.getItem('currentRoomId');
+
+		// Only auto-rejoin if the stored room ID matches the current room
+		if (storedParticipantName && storedRoomId === formattedRoomId) {
 			console.log("Attempting automatic rejoin with stored name:", storedParticipantName);
 			setIsRejoining(true);
 			handleRejoin();
 		}
-	}, [isClient, isLoading, room, participantId]);
+	}, [isClient, isLoading, room, participantId, formattedRoomId]);
 
 	// Handle vote selection
 	const handleVoteSelect = (vote: string) => {
@@ -154,6 +157,9 @@ const RoomPage = () => {
 			if (success) {
 				// Force refresh after successful rejoin
 				await refreshRoom(formattedRoomId);
+			} else {
+				// If we couldn't rejoin with the same name, redirect to join page
+				router.push(`/join/${formattedRoomId}`);
 			}
 		} catch (error) {
 			console.error("Error during rejoin:", error);
