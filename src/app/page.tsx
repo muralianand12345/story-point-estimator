@@ -5,13 +5,12 @@ import { useRouter } from 'next/navigation';
 import Header from '../components/Header';
 import Card from '../components/Card';
 import Input from '../components/Input';
-import Button from '../components/Button';
 import { useRoom } from '../context/RoomContext';
 
 export default function Home() {
 	const router = useRouter();
 	const { createRoom, joinRoom, checkRoomExists } = useRoom();
-	const [, setIsClient] = useState(false);
+	const [isClient, setIsClient] = useState(false);
 
 	const [roomId, setRoomId] = useState('');
 	const [name, setName] = useState('');
@@ -97,14 +96,14 @@ export default function Home() {
 	};
 
 	return (
-		<div className="min-h-screen bg-gray-50">
+		<div className="min-h-screen transition-colors">
 			<Header />
 			<main className="max-w-4xl mx-auto px-4 py-12">
 				<div className="text-center mb-12">
-					<h1 className="text-4xl font-bold text-gray-900 mb-4">
+					<h1 className="text-4xl font-bold mb-4">
 						Story Point Estimator
 					</h1>
-					<p className="text-lg text-gray-600">
+					<p className="text-lg text-gray-600 dark:text-gray-400">
 						Simple, real-time story point estimation for agile teams
 					</p>
 				</div>
@@ -112,7 +111,7 @@ export default function Home() {
 				<div className="grid md:grid-cols-2 gap-8">
 					{/* Join Room */}
 					<Card>
-						<h2 className="text-2xl font-bold text-gray-900 mb-6">
+						<h2 className="text-2xl font-bold mb-6">
 							Join a Room
 						</h2>
 						<form onSubmit={handleJoinRoom}>
@@ -133,17 +132,21 @@ export default function Home() {
 								required
 							/>
 							{joinError && (
-								<p className="text-red-500 text-sm mb-4">{joinError}</p>
+								<p className="text-red-500 dark:text-red-400 text-sm mb-4">{joinError}</p>
 							)}
-							<Button type="submit" fullWidth disabled={isSubmitting}>
+							<button
+								type="submit"
+								disabled={isSubmitting}
+								className="btn-primary mt-2"
+							>
 								{isSubmitting ? 'Joining...' : 'Join Room'}
-							</Button>
+							</button>
 						</form>
 					</Card>
 
 					{/* Create Room */}
 					<Card>
-						<h2 className="text-2xl font-bold text-gray-900 mb-6">
+						<h2 className="text-2xl font-bold mb-6">
 							Create a Room
 						</h2>
 						<form onSubmit={handleCreateRoom}>
@@ -170,9 +173,13 @@ export default function Home() {
 								value={roomDescription}
 								onChange={(e) => setRoomDescription(e.target.value)}
 							/>
-							<Button type="submit" fullWidth disabled={isSubmitting}>
+							<button
+								type="submit"
+								disabled={isSubmitting}
+								className="btn-primary mt-2"
+							>
 								{isSubmitting ? 'Creating...' : 'Create Room'}
-							</Button>
+							</button>
 						</form>
 					</Card>
 				</div>

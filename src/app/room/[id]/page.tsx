@@ -108,10 +108,10 @@ export default function RoomPage() {
 	// Show loading state
 	if (isLoading || !isClient) {
 		return (
-			<div className="min-h-screen bg-gray-50">
+			<div className="min-h-screen">
 				<Header />
 				<div className="flex items-center justify-center min-h-[60vh]">
-					<p className="text-lg">Loading room data...</p>
+					<p className="text-lg text-gray-600 dark:text-gray-400">Loading room data...</p>
 				</div>
 			</div>
 		);
@@ -120,17 +120,17 @@ export default function RoomPage() {
 	// Show error if room not found
 	if (!room) {
 		return (
-			<div className="min-h-screen bg-gray-50">
+			<div className="min-h-screen">
 				<Header />
 				<main className="max-w-md mx-auto px-4 py-12">
 					<Card>
-						<h1 className="text-xl font-bold text-gray-900 mb-4">Room Not Found</h1>
-						<p className="text-gray-600 mb-6">
+						<h1 className="text-xl font-bold mb-4">Room Not Found</h1>
+						<p className="text-gray-600 dark:text-gray-400 mb-6">
 							The room you&apos;re trying to access doesn&apos;t exist or has been closed.
 						</p>
-						<Button onClick={() => router.push('/')} fullWidth>
+						<button onClick={() => router.push('/')} className="btn-primary">
 							Back to Home
-						</Button>
+						</button>
 					</Card>
 				</main>
 			</div>
@@ -140,17 +140,17 @@ export default function RoomPage() {
 	// Show error if there's a participant issue
 	if (!participantId) {
 		return (
-			<div className="min-h-screen bg-gray-50">
+			<div className="min-h-screen">
 				<Header />
 				<main className="max-w-md mx-auto px-4 py-12">
 					<Card>
-						<h1 className="text-xl font-bold text-gray-900 mb-4">Connection Issue</h1>
-						<p className="text-gray-600 mb-6">
+						<h1 className="text-xl font-bold mb-4">Connection Issue</h1>
+						<p className="text-gray-600 dark:text-gray-400 mb-6">
 							You&apos;re not properly connected to this room. Please try joining again.
 						</p>
-						<Button onClick={() => router.push(`/join/${roomId}`)} fullWidth>
+						<button onClick={() => router.push(`/join/${roomId}`)} className="btn-primary">
 							Rejoin Room
-						</Button>
+						</button>
 					</Card>
 				</main>
 			</div>
@@ -162,19 +162,19 @@ export default function RoomPage() {
 	const allVoted = room.participants.every((p) => p.vote !== null);
 
 	return (
-		<div className="min-h-screen bg-gray-50">
+		<div className="min-h-screen">
 			<Header />
 
 			<main className="max-w-4xl mx-auto px-4 py-8">
 				<div className="mb-6">
-					<h1 className="text-2xl font-bold text-gray-900">{room.name}</h1>
+					<h1 className="text-2xl font-bold">{room.name}</h1>
 					{room.description && (
-						<p className="text-gray-600 mt-1">{room.description}</p>
+						<p className="text-gray-600 dark:text-gray-400 mt-1">{room.description}</p>
 					)}
 				</div>
 
 				{error && (
-					<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+					<div className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded mb-4">
 						{error}
 					</div>
 				)}
@@ -183,29 +183,29 @@ export default function RoomPage() {
 					<div className="md:col-span-2">
 						<Card>
 							<div className="flex justify-between items-center mb-4">
-								<h2 className="text-lg font-medium text-gray-900">
+								<h2 className="text-lg font-medium">
 									Cast Your Vote
 								</h2>
 
 								{isHost && (
 									<div className="flex space-x-2">
 										{!room.isRevealed ? (
-											<Button
-												variant="primary"
-												size="sm"
+											<button
+												className="btn-primary"
 												onClick={handleRevealVotes}
 												disabled={!allVoted}
+												style={{ width: 'auto', padding: '0.5rem 1rem' }}
 											>
 												Reveal Votes
-											</Button>
+											</button>
 										) : (
-											<Button
-												variant="secondary"
-												size="sm"
+											<button
+												className="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md px-4 py-2"
 												onClick={handleResetVoting}
+												style={{ width: 'auto' }}
 											>
 												Reset Voting
-											</Button>
+											</button>
 										)}
 									</div>
 								)}
@@ -236,7 +236,7 @@ export default function RoomPage() {
 						{isHost && <ShareRoom roomId={room.id} />}
 
 						<Card>
-							<h2 className="text-lg font-medium text-gray-900 mb-4">
+							<h2 className="text-lg font-medium mb-4">
 								Participants ({room.participants.length})
 							</h2>
 

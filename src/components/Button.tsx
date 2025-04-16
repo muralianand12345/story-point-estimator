@@ -24,13 +24,13 @@ const Button: React.FC<ButtonProps> = ({
     type = 'button',
     className = '',
 }) => {
-    const baseStyles = 'rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';
+    const baseStyles = 'rounded-md font-medium transition-all focus:outline-none';
 
     const variantStyles = {
-        primary: 'bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500',
-        secondary: 'bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500',
-        outline: 'border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-indigo-500',
-        text: 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 focus:ring-indigo-500',
+        primary: 'btn-primary',
+        secondary: 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600',
+        outline: 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800',
+        text: 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-gray-800',
     };
 
     const sizeStyles = {

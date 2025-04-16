@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import Header from '../../../components/Header';
 import Card from '../../../components/Card';
 import Input from '../../../components/Input';
-import Button from '../../../components/Button';
 import { useRoom } from '../../../context/RoomContext';
 
 export default function JoinPage() {
@@ -82,17 +81,17 @@ export default function JoinPage() {
 
     if (!roomExists) {
         return (
-            <div className="min-h-screen bg-gray-50">
+            <div className="min-h-screen">
                 <Header />
                 <main className="max-w-md mx-auto px-4 py-12">
                     <Card>
-                        <h1 className="text-xl font-bold text-gray-900 mb-4">Room Not Found</h1>
-                        <p className="text-gray-600 mb-6">
+                        <h1 className="text-xl font-bold mb-4">Room Not Found</h1>
+                        <p className="text-gray-600 dark:text-gray-400 mb-6">
                             The room you&apos;re trying to join no longer exists or has been closed by the host.
                         </p>
-                        <Button onClick={() => router.push('/')} fullWidth>
+                        <button onClick={() => router.push('/')} className="btn-primary">
                             Back to Home
-                        </Button>
+                        </button>
                     </Card>
                 </main>
             </div>
@@ -100,13 +99,13 @@ export default function JoinPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen">
             <Header />
 
             <main className="max-w-md mx-auto px-4 py-12">
                 <Card>
-                    <h1 className="text-xl font-bold text-gray-900 mb-4">Join Room</h1>
-                    <p className="text-gray-600 mb-6">
+                    <h1 className="text-xl font-bold mb-4">Join Room</h1>
+                    <p className="text-gray-600 dark:text-gray-400 mb-6">
                         You&apos;re joining room: <span className="font-mono font-medium">{formattedRoomId}</span>
                     </p>
 
@@ -121,20 +120,20 @@ export default function JoinPage() {
                             error={error}
                         />
 
-                        <div className="flex space-x-4">
-                            <Button
-                                variant="outline"
+                        <div className="flex space-x-4 mt-4">
+                            <button
+                                type="button"
                                 onClick={() => router.push('/')}
-                                className="flex-1"
+                                className="flex-1 py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                             >
                                 Cancel
-                            </Button>
-                            <Button
+                            </button>
+                            <button
                                 type="submit"
-                                className="flex-1"
+                                className="btn-primary flex-1"
                             >
                                 Join Room
-                            </Button>
+                            </button>
                         </div>
                     </form>
                 </Card>

@@ -44,7 +44,7 @@ const ShareRoom: React.FC<ShareRoomProps> = ({ roomId }) => {
     if (!isClient) {
         return (
             <Card className="mb-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Share Room</h3>
+                <h3 className="text-lg font-medium mb-4">Share Room</h3>
                 <div className="mb-4 h-16">
                     {/* Placeholder content with matching height */}
                 </div>
@@ -54,30 +54,28 @@ const ShareRoom: React.FC<ShareRoomProps> = ({ roomId }) => {
 
     return (
         <Card className="mb-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Share Room</h3>
+            <h3 className="text-lg font-medium mb-4">Share Room</h3>
 
             <div className="mb-4">
                 <div className="flex items-center mb-2">
-                    <p className="text-sm text-gray-500 mr-2">Room Code:</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mr-2">Room Code:</p>
                     <p className="font-mono font-medium text-lg">{roomId}</p>
                 </div>
 
                 <div className="flex space-x-2">
-                    <Button
-                        variant="secondary"
-                        size="sm"
+                    <button
+                        className="btn-primary flex-1"
                         onClick={() => copyToClipboard(roomId, 'code')}
                     >
                         {copied && copyType === 'code' ? 'Copied!' : 'Copy Code'}
-                    </Button>
+                    </button>
 
-                    <Button
-                        variant="outline"
-                        size="sm"
+                    <button
+                        className="btn-primary flex-1"
                         onClick={() => copyToClipboard(roomLink, 'link')}
                     >
                         {copied && copyType === 'link' ? 'Copied!' : 'Copy Link'}
-                    </Button>
+                    </button>
                 </div>
             </div>
         </Card>
