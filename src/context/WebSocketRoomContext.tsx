@@ -2,7 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import * as api from '@/lib/api';
-import { MessageType, ConnectionStatus, webSocketManager, WebSocketManager } from '@/lib/websocket'
+import { MessageType, ConnectionStatus, webSocketManager } from '@/lib/websocket'
+import { WebSocketMessageUnion } from '@/types/websocket';
 
 // Define types
 type Participant = api.Participant;
@@ -310,7 +311,7 @@ export const WebSocketRoomProvider: React.FC<{ children: React.ReactNode }> = ({
 
             try {
                 // Use WebSocket to leave room if connected
-                if (webSocketManager.isConnected()) {
+                if (webSocketManager && webSocketManager.isConnected()) {
                     webSocketManager.leaveRoom(room.id, participantId);
                 } else {
                     // Fall back to XHR if WebSocket is not connected
@@ -657,10 +658,10 @@ export const WebSocketRoomProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     return (
-        <WebSocketRoomContext.Provider value= { contextValue } >
-        { children }
+        <WebSocketRoomContext.Provider value={contextValue}>
+            {children}
         </WebSocketRoomContext.Provider>
-  );
+    );
 };
 
 export const useWebSocketRoom = () => useContext(WebSocketRoomContext);

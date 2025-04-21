@@ -1,31 +1,6 @@
-import { Room, Participant } from '../lib/api';
-import { WebSocketMessage, WebSocketMessageUnion } from '../types';
-
-// WebSocket message types
-export enum MessageType {
-    JOIN_ROOM = 'join_room',
-    LEAVE_ROOM = 'leave_room',
-    PARTICIPANT_JOINED = 'participant_joined',
-    PARTICIPANT_LEFT = 'participant_left',
-    SUBMIT_VOTE = 'submit_vote',
-    VOTE_SUBMITTED = 'vote_submitted',
-    REVEAL_VOTES = 'reveal_votes',
-    VOTES_REVEALED = 'votes_revealed',
-    RESET_VOTES = 'reset_votes',
-    VOTES_RESET = 'votes_reset',
-    ROOM_UPDATED = 'room_updated',
-    ERROR = 'error',
-    HEARTBEAT = 'heartbeat',
-    HEARTBEAT_ACK = 'heartbeat_ack'
-}
-
-// WebSocket connection status
-export enum ConnectionStatus {
-    CONNECTING = 'connecting',
-    CONNECTED = 'connected',
-    DISCONNECTED = 'disconnected',
-    RECONNECTING = 'reconnecting'
-}
+export { ConnectionStatus, MessageType } from '../types/websocket';
+import { WebSocketMessage, WebSocketMessageUnion, WebSocketEventMap, ConnectionStatus, MessageType } from '../types/websocket';
+import { Room, Participant } from './api';
 
 /**
  * WebSocketManager is responsible for managing WebSocket connections
@@ -329,30 +304,30 @@ export class WebSocketManager {
      * Add an event listener
      */
     public on<K extends keyof WebSocketEventMap>(event: K, callback: WebSocketEventMap[K]): void {
-        if (!this.eventListeners.has(event)) {
-            this.eventListeners.set(event, []);
+        if (!this.eventListeners.has(event as string)) {
+            this.eventListeners.set(event as string, []);
         }
 
-        this.eventListeners.get(event)!.push(callback);
+        this.eventListeners.get(event as string)!.push(callback as any);
     }
 
     /**
      * Remove an event listener
      */
     public off<K extends keyof WebSocketEventMap>(event: K, callback: WebSocketEventMap[K]): void {
-        if (!this.eventListeners.has(event)) {
+        if (!this.eventListeners.has(event as string)) {
             return;
         }
 
-        const listeners = this.eventListeners.get(event)!;
-        const index = listeners.indexOf(callback);
+        const listeners = this.eventListeners.get(event as string)!;
+        const index = listeners.indexOf(callback as any);
 
         if (index !== -1) {
             listeners.splice(index, 1);
         }
 
         if (listeners.length === 0) {
-            this.eventListeners.delete(event);
+            this.eventListeners.delete(event as string);
         }
     }
 
