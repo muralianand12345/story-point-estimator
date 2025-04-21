@@ -1,25 +1,25 @@
 export enum MessageType {
-    JOIN_ROOM = 'join_room',
-    LEAVE_ROOM = 'leave_room',
-    PARTICIPANT_JOINED = 'participant_joined',
-    PARTICIPANT_LEFT = 'participant_left',
-    SUBMIT_VOTE = 'submit_vote',
-    VOTE_SUBMITTED = 'vote_submitted',
-    REVEAL_VOTES = 'reveal_votes',
-    VOTES_REVEALED = 'votes_revealed',
-    RESET_VOTES = 'reset_votes',
-    VOTES_RESET = 'votes_reset',
-    ROOM_UPDATED = 'room_updated',
-    ERROR = 'error',
-    HEARTBEAT = 'heartbeat',
-    HEARTBEAT_ACK = 'heartbeat_ack'
+	JOIN_ROOM = 'join_room',
+	LEAVE_ROOM = 'leave_room',
+	PARTICIPANT_JOINED = 'participant_joined',
+	PARTICIPANT_LEFT = 'participant_left',
+	SUBMIT_VOTE = 'submit_vote',
+	VOTE_SUBMITTED = 'vote_submitted',
+	REVEAL_VOTES = 'reveal_votes',
+	VOTES_REVEALED = 'votes_revealed',
+	RESET_VOTES = 'reset_votes',
+	VOTES_RESET = 'votes_reset',
+	ROOM_UPDATED = 'room_updated',
+	ERROR = 'error',
+	HEARTBEAT = 'heartbeat',
+	HEARTBEAT_ACK = 'heartbeat_ack'
 }
 
 export enum ConnectionStatus {
-    CONNECTING = 'connecting',
-    CONNECTED = 'connected',
-    DISCONNECTED = 'disconnected',
-    RECONNECTING = 'reconnecting'
+	CONNECTING = 'connecting',
+	CONNECTED = 'connected',
+	DISCONNECTED = 'disconnected',
+	RECONNECTING = 'reconnecting'
 }
 
 export interface WebSocketMessage {

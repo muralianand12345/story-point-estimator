@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useWebSocketRoom } from '../context/WebSocketRoomContext';
-import { ConnectionStatus } from '../context/WebSocketRoomContext';
+import { ConnectionStatus } from '../lib/websocket';
 
 interface WebSocketStatusProps {
     showLabel?: boolean;

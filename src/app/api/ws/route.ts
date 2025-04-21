@@ -10,8 +10,13 @@ interface RoomSubscriptions {
 }
 
 const roomSubscriptions: RoomSubscriptions = {};
+let wss: WebSocketServer | null = null;
 
 export async function GET(request: Request) {
+    if (!wss) {
+        wss = new WebSocketServer({ noServer: true });
+    }
+
     const { socket, response } = Reflect.get(request, 'socket')
         ? { socket: Reflect.get(request, 'socket'), response: new Response(null) }
         : { socket: null, response: new Response('Upgrade to WebSocket protocol failed', { status: 426 }) };
@@ -48,10 +53,14 @@ export async function GET(request: Request) {
             switch (type) {
                 case MessageType.JOIN_ROOM:
                     await handleJoinRoom(ws, payload);
+                    currentRoomId = payload.roomId;
+                    currentParticipantId = payload.participantId;
                     break;
 
                 case MessageType.LEAVE_ROOM:
                     await handleLeaveRoom(ws, payload);
+                    currentRoomId = null;
+                    currentParticipantId = null;
                     break;
 
                 case MessageType.SUBMIT_VOTE:
