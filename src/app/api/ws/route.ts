@@ -1,4 +1,6 @@
-import { WebSocket } from 'ws';
+// src/app/api/ws/route.ts
+import { WebSocketServer } from 'ws';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { MessageType } from '@/types/websocket';
 
@@ -18,6 +20,8 @@ export async function GET(request: Request) {
         return response;
     }
 
+    const ws = socket as unknown as WebSocket;
+
     // Store participant and room info
     let currentParticipantId: string | null = null;
     let currentRoomId: string | null = null;
@@ -26,39 +30,40 @@ export async function GET(request: Request) {
 
     // Set up heartbeat to keep connection alive
     const pingInterval = setInterval(() => {
-        if (socket.readyState === socket.OPEN) {
+        if (ws.readyState === ws.OPEN) {
             // Respond to heartbeats from client
-            socket.send(JSON.stringify({ type: MessageType.HEARTBEAT_ACK }));
+            ws.send(JSON.stringify({ type: MessageType.HEARTBEAT_ACK }));
         }
     }, 30000);
 
     // Handle incoming messages
-    socket.on('message', async (data: Buffer) => {
+    ws.addEventListener('message', async (event) => {
         try {
-            const message = JSON.parse(data.toString());
+            const data = event.data;
+            const message = JSON.parse(typeof data === 'string' ? data : data.toString());
 
             // Extract message type
             const { type, payload } = message;
 
             switch (type) {
                 case MessageType.JOIN_ROOM:
-                    await handleJoinRoom(socket, payload);
+                    await handleJoinRoom(ws, payload);
                     break;
 
                 case MessageType.LEAVE_ROOM:
-                    await handleLeaveRoom(socket, payload);
+                    await handleLeaveRoom(ws, payload);
                     break;
 
                 case MessageType.SUBMIT_VOTE:
-                    await handleSubmitVote(socket, payload);
+                    await handleSubmitVote(ws, payload);
                     break;
 
                 case MessageType.REVEAL_VOTES:
-                    await handleRevealVotes(socket, payload);
+                    await handleRevealVotes(ws, payload);
                     break;
 
                 case MessageType.RESET_VOTES:
-                    await handleResetVotes(socket, payload);
+                    await handleResetVotes(ws, payload);
                     break;
 
                 case MessageType.HEARTBEAT:
@@ -84,21 +89,21 @@ export async function GET(request: Request) {
                     }
 
                     // Send heartbeat acknowledgment
-                    socket.send(JSON.stringify({ type: MessageType.HEARTBEAT_ACK }));
+                    ws.send(JSON.stringify({ type: MessageType.HEARTBEAT_ACK }));
                     break;
 
                 default:
                     console.warn(`Unknown message type: ${type}`);
-                    sendError(socket, 'Unknown message type');
+                    sendError(ws, 'Unknown message type');
             }
         } catch (error) {
             console.error('Error handling WebSocket message:', error);
-            sendError(socket, 'Invalid message format');
+            sendError(ws, 'Invalid message format');
         }
     });
 
     // Handle connection close
-    socket.on('close', async () => {
+    ws.addEventListener('close', async () => {
         console.log('WebSocket connection closed');
 
         // Clean up
@@ -106,7 +111,7 @@ export async function GET(request: Request) {
 
         // Remove from subscriptions
         if (currentRoomId && currentParticipantId) {
-            await handleLeaveRoom(socket, {
+            await handleLeaveRoom(ws, {
                 roomId: currentRoomId,
                 participantId: currentParticipantId
             });
@@ -114,8 +119,8 @@ export async function GET(request: Request) {
     });
 
     // Handle errors
-    socket.on('error', (error: Error) => {
-        console.error('WebSocket error:', error);
+    ws.addEventListener('error', (event) => {
+        console.error('WebSocket error:', event);
     });
 
     return response;
@@ -579,5 +584,3 @@ function sendError(ws: WebSocket, message: string, code?: string) {
         }));
     }
 }
-
-export { handler as GET };
