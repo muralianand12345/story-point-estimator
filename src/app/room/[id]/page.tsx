@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useRoom } from '../../../context/RoomContext';
+import { useWebSocketRoom } from '../../../context/WebSocketRoomContext';
 import Header from '../../../components/Header';
 import Card from '../../../components/Card';
 import VotingCard from '../../../components/VotingCard';
@@ -11,6 +11,7 @@ import VotingResult from '../../../components/VotingResult';
 import ShareRoom from '../../../components/ShareRoom';
 import Button from '../../../components/Button';
 import Logo from '../../../components/Logo';
+import { ConnectionStatus } from '../../../lib/websocket';
 
 const RoomPage = () => {
 	const params = useParams();
@@ -34,7 +35,9 @@ const RoomPage = () => {
 		refreshRoom,
 		joinRoom,
 		error,
-	} = useRoom();
+		connectionStatus,
+		isConnected
+	} = useWebSocketRoom();
 
 	const [selectedVote, setSelectedVote] = useState<string | null>(null);
 	const [isClient, setIsClient] = useState(false);
@@ -64,17 +67,6 @@ const RoomPage = () => {
 			initialSetupDone.current = true;
 		});
 	}, [formattedRoomId, refreshRoom, isClient]);
-
-	// Auto-refresh the room data
-	useEffect(() => {
-		if (!isClient || !formattedRoomId) return;
-
-		const intervalId = setInterval(() => {
-			refreshRoom(formattedRoomId).catch(console.error);
-		}, 2000); // Poll every 2 seconds
-
-		return () => clearInterval(intervalId);
-	}, [isClient, formattedRoomId, refreshRoom]);
 
 	// Update selected vote when room changes
 	useEffect(() => {
@@ -204,6 +196,10 @@ const RoomPage = () => {
 		);
 	}
 
+	// Show connection issue banner
+	const showConnectionIssue = connectionStatus === ConnectionStatus.DISCONNECTED || 
+	                            connectionStatus === ConnectionStatus.RECONNECTING;
+
 	// Show participant connection issue with rejoin option
 	if (!participantId) {
 		return (
@@ -252,6 +248,19 @@ const RoomPage = () => {
 			<Header />
 
 			<main className="max-w-4xl mx-auto px-4 py-8">
+				{showConnectionIssue && (
+					<div className="bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-400 dark:border-yellow-800 text-yellow-700 dark:text-yellow-400 px-4 py-3 rounded mb-6">
+						<p className="flex items-center">
+							<svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+								<path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+							</svg>
+							{connectionStatus === ConnectionStatus.RECONNECTING ? 
+								'Reconnecting to server...' : 
+								'Connection lost. Real-time updates are disabled. Try refreshing the page.'}
+						</p>
+					</div>
+				)}
+
 				<div className="mb-6">
 					<h1 className="text-2xl font-bold text-primary-700 dark:text-primary-400">{room.name}</h1>
 					{room.description && (
@@ -279,7 +288,7 @@ const RoomPage = () => {
 											<Button
 												variant="primary"
 												onClick={handleRevealVotes}
-												disabled={!allVoted}
+												disabled={!allVoted || !isConnected}
 												className="whitespace-nowrap"
 												fullWidth={false}
 											>
@@ -289,6 +298,7 @@ const RoomPage = () => {
 											<Button
 												variant="secondary"
 												onClick={handleResetVoting}
+												disabled={!isConnected}
 												fullWidth={false}
 												className="whitespace-nowrap"
 											>
@@ -306,7 +316,7 @@ const RoomPage = () => {
 										value={option}
 										selected={selectedVote === option}
 										onClick={handleVoteSelect}
-										disabled={room.isRevealed}
+										disabled={room.isRevealed || !isConnected}
 									/>
 								))}
 							</div>

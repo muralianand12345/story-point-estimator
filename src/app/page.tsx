@@ -5,13 +5,13 @@ import { useRouter } from 'next/navigation';
 import Header from '../components/Header';
 import Card from '../components/Card';
 import Input from '../components/Input';
-import { useRoom } from '../context/RoomContext';
+import { useWebSocketRoom } from '../context/WebSocketRoomContext';
 import Logo from '../components/Logo';
 import Button from '../components/Button';
 
 const Home = () => {
 	const router = useRouter();
-	const { createRoom, joinRoom, checkRoomExists } = useRoom();
+	const { createRoom, joinRoom, checkRoomExists } = useWebSocketRoom();
 	const [isClient, setIsClient] = useState(false);
 
 	const [roomId, setRoomId] = useState('');

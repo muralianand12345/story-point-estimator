@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRoom } from '../context/RoomContext';
+import { useWebSocketRoom } from '../context/WebSocketRoomContext';
 import Button from './Button';
 import ThemeToggle from './ThemeToggle';
 import Logo from './Logo';
+import WebSocketStatus from './WebSocketStatus';
 
 const Header: React.FC = () => {
-    const { room, leaveRoom } = useRoom();
+    const { room, leaveRoom } = useWebSocketRoom();
     const [isClient, setIsClient] = useState(false);
 
     // Set isClient to true on mount to avoid hydration mismatch
@@ -37,6 +38,7 @@ const Header: React.FC = () => {
                 </Link>
 
                 <div className="flex items-center space-x-4">
+                    <WebSocketStatus />
                     <ThemeToggle />
 
                     {room && (

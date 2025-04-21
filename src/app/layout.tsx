@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { RoomProvider } from "../context/RoomContext";
+import { WebSocketRoomProvider } from "../context/WebSocketRoomContext";
 import ThemeProvider from "../context/ThemeContext";
 import { Analytics } from "@vercel/analytics/react"
 
@@ -27,12 +27,12 @@ const RootLayout = async ({
 }>) => {
     return (
         <html lang="en" suppressHydrationWarning>
-            <Analytics/>
+            <Analytics />
             <body
                 className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen transition-colors`}
             >
                 <ThemeProvider>
-                    <RoomProvider>{children}</RoomProvider>
+                    <WebSocketRoomProvider>{children}</WebSocketRoomProvider>
                 </ThemeProvider>
             </body>
         </html>
