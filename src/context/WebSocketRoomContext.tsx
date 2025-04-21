@@ -2,12 +2,18 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import * as api from '@/lib/api';
-import { MessageType, ConnectionStatus, webSocketManager } from '@/lib/websocket'
-import { WebSocketMessageUnion } from '@/types/websocket';
 
 // Define types
 type Participant = api.Participant;
 type Room = api.Room;
+
+// Define connection status
+export enum ConnectionStatus {
+    CONNECTED = 'connected',
+    CONNECTING = 'connecting',
+    DISCONNECTED = 'disconnected',
+    RECONNECTING = 'reconnecting'
+}
 
 interface WebSocketRoomContextType {
     room: Room | null;
@@ -59,149 +65,13 @@ export const WebSocketRoomProvider: React.FC<{ children: React.ReactNode }> = ({
     const [error, setError] = useState<string | null>(null);
     const [isClient, setIsClient] = useState<boolean>(false);
     const [reconnectionAttempt, setReconnectionAttempt] = useState<number>(0);
-    const [isConnected, setIsConnected] = useState<boolean>(false);
-    const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED);
+    const [isConnected, setIsConnected] = useState<boolean>(true); // Default to true with polling
+    const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(ConnectionStatus.CONNECTED);
+    const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
 
     // Set isClient to true once component mounts on client
     useEffect(() => {
         setIsClient(true);
-    }, []);
-
-    // Initialize WebSocket connection
-    useEffect(() => {
-        if (!isClient || !webSocketManager) return;
-
-        // Set up WebSocket event listeners
-        webSocketManager.on('connect', handleConnect);
-        webSocketManager.on('disconnect', handleDisconnect);
-        webSocketManager.on('reconnecting', handleReconnecting);
-        webSocketManager.on('reconnect_failed', handleReconnectFailed);
-        webSocketManager.on('error', handleWebSocketError);
-
-        // Set up message listeners
-        webSocketManager.on(MessageType.PARTICIPANT_JOINED, handleParticipantJoined);
-        webSocketManager.on(MessageType.PARTICIPANT_LEFT, handleParticipantLeft);
-        webSocketManager.on(MessageType.ROOM_UPDATED, handleRoomUpdated);
-        webSocketManager.on(MessageType.VOTES_REVEALED, handleVotesRevealed);
-        webSocketManager.on(MessageType.VOTES_RESET, handleVotesReset);
-        webSocketManager.on(MessageType.ERROR, handleError);
-
-        // Connect to WebSocket server
-        webSocketManager.connect();
-
-        // Update connection status
-        setConnectionStatus(webSocketManager.getStatus());
-        setIsConnected(webSocketManager.isConnected());
-
-        // Cleanup event listeners on unmount
-        return () => {
-            if (webSocketManager) {
-                webSocketManager.off('connect', handleConnect);
-                webSocketManager.off('disconnect', handleDisconnect);
-                webSocketManager.off('reconnecting', handleReconnecting);
-                webSocketManager.off('reconnect_failed', handleReconnectFailed);
-                webSocketManager.off('error', handleWebSocketError);
-
-                webSocketManager.off(MessageType.PARTICIPANT_JOINED, handleParticipantJoined);
-                webSocketManager.off(MessageType.PARTICIPANT_LEFT, handleParticipantLeft);
-                webSocketManager.off(MessageType.ROOM_UPDATED, handleRoomUpdated);
-                webSocketManager.off(MessageType.VOTES_REVEALED, handleVotesRevealed);
-                webSocketManager.off(MessageType.VOTES_RESET, handleVotesReset);
-                webSocketManager.off(MessageType.ERROR, handleError);
-            }
-        };
-    }, [isClient]);
-
-    // WebSocket event handlers
-    const handleConnect = useCallback(() => {
-        console.log('WebSocket connected');
-        setIsConnected(true);
-        setConnectionStatus(ConnectionStatus.CONNECTED);
-        setError(null);
-
-        // If we have a stored room and participant ID, attempt to rejoin
-        const storedRoomId = localStorage.getItem('currentRoomId');
-        const storedParticipantId = localStorage.getItem('participantId');
-        const storedParticipantName = localStorage.getItem('participantName');
-
-        if (storedRoomId && storedParticipantName) {
-            // Set session info in the WebSocket manager
-            if (storedParticipantId) {
-                webSocketManager?.setCurrentSession(storedRoomId, storedParticipantId);
-            }
-
-            // Refresh room data
-            refreshRoom(storedRoomId).catch(console.error);
-        }
-    }, []);
-
-    const handleDisconnect = useCallback((code: number, reason: string) => {
-        console.log(`WebSocket disconnected: ${code} - ${reason}`);
-        setIsConnected(false);
-        setConnectionStatus(ConnectionStatus.DISCONNECTED);
-    }, []);
-
-    const handleReconnecting = useCallback((attempt: number) => {
-        console.log(`WebSocket reconnecting, attempt ${attempt}`);
-        setConnectionStatus(ConnectionStatus.RECONNECTING);
-        setReconnectionAttempt(attempt);
-    }, []);
-
-    const handleReconnectFailed = useCallback(() => {
-        console.log('WebSocket reconnect failed');
-        setConnectionStatus(ConnectionStatus.DISCONNECTED);
-        setError('Connection lost. Please refresh the page to reconnect.');
-    }, []);
-
-    const handleWebSocketError = useCallback((error: Error) => {
-        console.error('WebSocket error:', error);
-        setError(`WebSocket error: ${error.message}`);
-    }, []);
-
-    // Message handlers
-    const handleParticipantJoined = useCallback((payload: any) => {
-        console.log('Participant joined:', payload);
-        // If this is our own join confirmation, update our participant ID
-        if (!participantId && payload.participant) {
-            setParticipantId(payload.participant.id);
-            localStorage.setItem('participantId', payload.participant.id);
-
-            // If we have a room ID, update the WebSocket manager's session
-            const roomId = localStorage.getItem('currentRoomId');
-            if (roomId) {
-                webSocketManager?.setCurrentSession(roomId, payload.participant.id);
-            }
-        }
-    }, [participantId]);
-
-    const handleParticipantLeft = useCallback((payload: any) => {
-        console.log('Participant left:', payload);
-    }, []);
-
-    const handleRoomUpdated = useCallback((payload: any) => {
-        console.log('Room updated:', payload);
-        if (payload.room) {
-            setRoom(payload.room);
-        }
-    }, []);
-
-    const handleVotesRevealed = useCallback((payload: any) => {
-        console.log('Votes revealed:', payload);
-        if (payload.room) {
-            setRoom(payload.room);
-        }
-    }, []);
-
-    const handleVotesReset = useCallback((payload: any) => {
-        console.log('Votes reset:', payload);
-        if (payload.room) {
-            setRoom(payload.room);
-        }
-    }, []);
-
-    const handleError = useCallback((payload: any) => {
-        console.error('WebSocket error message:', payload);
-        setError(payload.message || 'Unknown error');
     }, []);
 
     // Load user ID from localStorage on initial render - only on client
@@ -229,6 +99,44 @@ export const WebSocketRoomProvider: React.FC<{ children: React.ReactNode }> = ({
             attemptRoomReconnection(storedRoomId).catch(console.error);
         }
     }, [isClient]);
+
+    // Set up polling when in a room
+    useEffect(() => {
+        if (!isClient || !room?.id || !participantId) return;
+
+        // Clear any existing interval
+        if (pollingInterval) {
+            clearInterval(pollingInterval);
+        }
+
+        // Set up new polling interval
+        const intervalId = setInterval(() => {
+            refreshRoom(room.id).catch(console.error);
+
+            // Send a heartbeat update
+            try {
+                fetch(`/api/rooms/${room.id}/participants/${participantId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ timestamp: new Date().toISOString() }),
+                }).catch(error => {
+                    console.error('Error sending heartbeat:', error);
+                });
+            } catch (error) {
+                console.error('Error in heartbeat:', error);
+            }
+        }, 3000); // Poll every 3 seconds
+
+        setPollingInterval(intervalId);
+
+        // Clean up on unmount or room change
+        return () => {
+            clearInterval(intervalId);
+            setPollingInterval(null);
+        };
+    }, [isClient, room?.id, participantId]);
 
     // Attempt to reconnect to a room
     const attemptRoomReconnection = async (roomId: string) => {
@@ -259,7 +167,7 @@ export const WebSocketRoomProvider: React.FC<{ children: React.ReactNode }> = ({
             const storedParticipantId = localStorage.getItem('participantId');
             const storedParticipantName = localStorage.getItem('participantName');
 
-            if (storedParticipantId && webSocketManager && webSocketManager.isConnected()) {
+            if (storedParticipantId) {
                 // Check if participant still exists in the room
                 const participantExists = latestRoom.participants.some(
                     p => p.id === storedParticipantId
@@ -268,12 +176,6 @@ export const WebSocketRoomProvider: React.FC<{ children: React.ReactNode }> = ({
                 if (participantExists) {
                     // Participant still exists, we can successfully reconnect
                     setParticipantId(storedParticipantId);
-                    // Update WebSocket session
-                    webSocketManager.setCurrentSession(roomId, storedParticipantId);
-                    // Join room via WebSocket
-                    if (storedParticipantName) {
-                        webSocketManager.joinRoom(roomId, storedParticipantName, storedParticipantId);
-                    }
                     return;
                 }
             }
@@ -301,7 +203,7 @@ export const WebSocketRoomProvider: React.FC<{ children: React.ReactNode }> = ({
 
     // Handle beforeunload event to clean up when user closes tab/browser
     useEffect(() => {
-        if (!isClient || !room?.id || !participantId || !webSocketManager) return;
+        if (!isClient || !room?.id || !participantId) return;
 
         // Handler for when user is about to leave the page
         const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -310,15 +212,10 @@ export const WebSocketRoomProvider: React.FC<{ children: React.ReactNode }> = ({
             event.returnValue = '';
 
             try {
-                // Use WebSocket to leave room if connected
-                if (webSocketManager && webSocketManager.isConnected()) {
-                    webSocketManager.leaveRoom(room.id, participantId);
-                } else {
-                    // Fall back to XHR if WebSocket is not connected
-                    const xhr = new XMLHttpRequest();
-                    xhr.open('DELETE', `/api/rooms/${room.id}/participants/${participantId}`, false);
-                    xhr.send();
-                }
+                // Use a synchronous approach for the beforeunload event
+                const xhr = new XMLHttpRequest();
+                xhr.open('DELETE', `/api/rooms/${room.id}/participants/${participantId}`, false);
+                xhr.send();
 
                 // Clear local storage
                 localStorage.removeItem('participantId');
@@ -353,7 +250,7 @@ export const WebSocketRoomProvider: React.FC<{ children: React.ReactNode }> = ({
             // Store host name in localStorage
             localStorage.setItem('participantName', hostName);
 
-            // Create room using REST API (we don't have a WebSocket connection yet)
+            // Create room using REST API
             const newRoom = await api.createRoom(name, description, hostName);
 
             // Find the host participant (created along with the room)
@@ -362,12 +259,6 @@ export const WebSocketRoomProvider: React.FC<{ children: React.ReactNode }> = ({
             if (hostParticipant) {
                 setParticipantId(hostParticipant.id);
                 localStorage.setItem('participantId', hostParticipant.id);
-
-                // If WebSocket is connected, update session and join room
-                if (webSocketManager && webSocketManager.isConnected()) {
-                    webSocketManager.setCurrentSession(newRoom.id, hostParticipant.id);
-                    webSocketManager.joinRoom(newRoom.id, hostName, hostParticipant.id);
-                }
             }
 
             setRoom(newRoom);
@@ -392,51 +283,20 @@ export const WebSocketRoomProvider: React.FC<{ children: React.ReactNode }> = ({
             // Store participant name in localStorage
             localStorage.setItem('participantName', participantName);
 
-            // If WebSocket is connected, join through WebSocket
-            if (webSocketManager && webSocketManager.isConnected()) {
-                // Get the stored participant ID if available
-                const storedParticipantId = localStorage.getItem('participantId');
+            const result = await api.joinRoom(roomId, participantName);
 
-                // Join room via WebSocket
-                const joinSuccess = webSocketManager.joinRoom(
-                    roomId,
-                    participantName,
-                    storedParticipantId || undefined
-                );
-
-                if (!joinSuccess) {
-                    throw new Error('Failed to join room via WebSocket');
-                }
-
-                // Get the latest room data
-                const latestRoom = await api.getRoom(roomId);
-                if (!latestRoom) {
-                    throw new Error('Room not found');
-                }
-
-                setRoom(latestRoom);
-                localStorage.setItem('currentRoomId', roomId);
-
-                // Note: We'll get the participant ID from the server response in the handleParticipantJoined handler
-
-                return true;
-            } else {
-                // Fall back to REST API if WebSocket is not connected
-                const result = await api.joinRoom(roomId, participantName);
-
-                if (!result) {
-                    setError('Failed to join room');
-                    return false;
-                }
-
-                setRoom(result.room);
-                setParticipantId(result.participant.id);
-
-                localStorage.setItem('currentRoomId', roomId);
-                localStorage.setItem('participantId', result.participant.id);
-
-                return true;
+            if (!result) {
+                setError('Failed to join room');
+                return false;
             }
+
+            setRoom(result.room);
+            setParticipantId(result.participant.id);
+
+            localStorage.setItem('currentRoomId', roomId);
+            localStorage.setItem('participantId', result.participant.id);
+
+            return true;
         } catch (err) {
             console.error('Error joining room:', err);
             setError('Failed to join room');
@@ -461,15 +321,7 @@ export const WebSocketRoomProvider: React.FC<{ children: React.ReactNode }> = ({
         setError(null);
 
         try {
-            const roomId = room.id;
-
-            // If WebSocket is connected, leave through WebSocket
-            if (webSocketManager && webSocketManager.isConnected()) {
-                webSocketManager.leaveRoom(roomId, participantId);
-            } else {
-                // Fall back to REST API if WebSocket is not connected
-                await api.leaveRoom(roomId, participantId);
-            }
+            await api.leaveRoom(room.id, participantId);
 
             // Clean up local storage and state
             localStorage.removeItem('currentRoomId');
@@ -480,7 +332,6 @@ export const WebSocketRoomProvider: React.FC<{ children: React.ReactNode }> = ({
             console.error('Error leaving room:', err);
 
             // Even if the API call fails, clean up local state
-            // This prevents the user from being stuck
             localStorage.removeItem('currentRoomId');
             localStorage.removeItem('participantId');
             setRoom(null);
@@ -504,20 +355,8 @@ export const WebSocketRoomProvider: React.FC<{ children: React.ReactNode }> = ({
         setError(null);
 
         try {
-            // If WebSocket is connected, submit vote through WebSocket
-            if (webSocketManager && webSocketManager.isConnected()) {
-                const success = webSocketManager.submitVote(room.id, participantId, vote);
-
-                if (!success) {
-                    throw new Error('Failed to submit vote via WebSocket');
-                }
-
-                // The room will be updated via WebSocket message
-            } else {
-                // Fall back to REST API if WebSocket is not connected
-                const updatedRoom = await api.submitVote(room.id, participantId, vote);
-                setRoom(updatedRoom);
-            }
+            const updatedRoom = await api.submitVote(room.id, participantId, vote);
+            setRoom(updatedRoom);
         } catch (err) {
             console.error('Error submitting vote:', err);
             setError('Failed to submit vote');
@@ -528,26 +367,14 @@ export const WebSocketRoomProvider: React.FC<{ children: React.ReactNode }> = ({
 
     // Reveal votes
     const revealVotes = async (): Promise<void> => {
-        if (!room || !participantId) return;
+        if (!room) return;
 
         setIsLoading(true);
         setError(null);
 
         try {
-            // If WebSocket is connected, reveal votes through WebSocket
-            if (webSocketManager && webSocketManager.isConnected()) {
-                const success = webSocketManager.revealVotes(room.id, participantId);
-
-                if (!success) {
-                    throw new Error('Failed to reveal votes via WebSocket');
-                }
-
-                // The room will be updated via WebSocket message
-            } else {
-                // Fall back to REST API if WebSocket is not connected
-                const updatedRoom = await api.revealVotes(room.id);
-                setRoom(updatedRoom);
-            }
+            const updatedRoom = await api.revealVotes(room.id);
+            setRoom(updatedRoom);
         } catch (err) {
             console.error('Error revealing votes:', err);
             setError('Failed to reveal votes');
@@ -558,26 +385,14 @@ export const WebSocketRoomProvider: React.FC<{ children: React.ReactNode }> = ({
 
     // Reset votes for a new round
     const resetVotes = async (): Promise<void> => {
-        if (!room || !participantId) return;
+        if (!room) return;
 
         setIsLoading(true);
         setError(null);
 
         try {
-            // If WebSocket is connected, reset votes through WebSocket
-            if (webSocketManager && webSocketManager.isConnected()) {
-                const success = webSocketManager.resetVotes(room.id, participantId);
-
-                if (!success) {
-                    throw new Error('Failed to reset votes via WebSocket');
-                }
-
-                // The room will be updated via WebSocket message
-            } else {
-                // Fall back to REST API if WebSocket is not connected
-                const updatedRoom = await api.resetVotes(room.id);
-                setRoom(updatedRoom);
-            }
+            const updatedRoom = await api.resetVotes(room.id);
+            setRoom(updatedRoom);
         } catch (err) {
             console.error('Error resetting votes:', err);
             setError('Failed to reset votes');

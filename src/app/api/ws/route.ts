@@ -1,6 +1,6 @@
-import { WebSocketHandler } from 'next/web-socket';
+import { WebSocket } from 'ws';
 import prisma from '@/lib/prisma';
-import { MessageType } from '@/lib/websocket';
+import { MessageType } from '@/types/websocket';
 
 // Store active connections
 interface RoomSubscriptions {
@@ -9,8 +9,15 @@ interface RoomSubscriptions {
 
 const roomSubscriptions: RoomSubscriptions = {};
 
-// WebSocketHandler for handling WebSocket connections
-const handler: WebSocketHandler = async (ws) => {
+export async function GET(request: Request) {
+    const { socket, response } = Reflect.get(request, 'socket')
+        ? { socket: Reflect.get(request, 'socket'), response: new Response(null) }
+        : { socket: null, response: new Response('Upgrade to WebSocket protocol failed', { status: 426 }) };
+
+    if (!socket) {
+        return response;
+    }
+
     // Store participant and room info
     let currentParticipantId: string | null = null;
     let currentRoomId: string | null = null;
@@ -19,14 +26,14 @@ const handler: WebSocketHandler = async (ws) => {
 
     // Set up heartbeat to keep connection alive
     const pingInterval = setInterval(() => {
-        if (ws.readyState === ws.OPEN) {
+        if (socket.readyState === socket.OPEN) {
             // Respond to heartbeats from client
-            ws.send(JSON.stringify({ type: MessageType.HEARTBEAT_ACK }));
+            socket.send(JSON.stringify({ type: MessageType.HEARTBEAT_ACK }));
         }
     }, 30000);
 
     // Handle incoming messages
-    ws.on('message', async (data) => {
+    socket.on('message', async (data: Buffer) => {
         try {
             const message = JSON.parse(data.toString());
 
@@ -35,23 +42,23 @@ const handler: WebSocketHandler = async (ws) => {
 
             switch (type) {
                 case MessageType.JOIN_ROOM:
-                    await handleJoinRoom(ws, payload);
+                    await handleJoinRoom(socket, payload);
                     break;
 
                 case MessageType.LEAVE_ROOM:
-                    await handleLeaveRoom(ws, payload);
+                    await handleLeaveRoom(socket, payload);
                     break;
 
                 case MessageType.SUBMIT_VOTE:
-                    await handleSubmitVote(ws, payload);
+                    await handleSubmitVote(socket, payload);
                     break;
 
                 case MessageType.REVEAL_VOTES:
-                    await handleRevealVotes(ws, payload);
+                    await handleRevealVotes(socket, payload);
                     break;
 
                 case MessageType.RESET_VOTES:
-                    await handleResetVotes(ws, payload);
+                    await handleResetVotes(socket, payload);
                     break;
 
                 case MessageType.HEARTBEAT:
@@ -77,21 +84,21 @@ const handler: WebSocketHandler = async (ws) => {
                     }
 
                     // Send heartbeat acknowledgment
-                    ws.send(JSON.stringify({ type: MessageType.HEARTBEAT_ACK }));
+                    socket.send(JSON.stringify({ type: MessageType.HEARTBEAT_ACK }));
                     break;
 
                 default:
                     console.warn(`Unknown message type: ${type}`);
-                    sendError(ws, 'Unknown message type');
+                    sendError(socket, 'Unknown message type');
             }
         } catch (error) {
             console.error('Error handling WebSocket message:', error);
-            sendError(ws, 'Invalid message format');
+            sendError(socket, 'Invalid message format');
         }
     });
 
     // Handle connection close
-    ws.on('close', async () => {
+    socket.on('close', async () => {
         console.log('WebSocket connection closed');
 
         // Clean up
@@ -99,7 +106,7 @@ const handler: WebSocketHandler = async (ws) => {
 
         // Remove from subscriptions
         if (currentRoomId && currentParticipantId) {
-            await handleLeaveRoom(ws, {
+            await handleLeaveRoom(socket, {
                 roomId: currentRoomId,
                 participantId: currentParticipantId
             });
@@ -107,10 +114,12 @@ const handler: WebSocketHandler = async (ws) => {
     });
 
     // Handle errors
-    ws.on('error', (error: Error | any) => {
+    socket.on('error', (error: Error) => {
         console.error('WebSocket error:', error);
     });
-};
+
+    return response;
+}
 
 /**
  * Handle joining a room
@@ -571,4 +580,4 @@ function sendError(ws: WebSocket, message: string, code?: string) {
     }
 }
 
-export { handler as GET, handler as POST, handler as WebSocketHandler };
+export { handler as GET };

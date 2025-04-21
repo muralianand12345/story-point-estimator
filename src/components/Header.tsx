@@ -6,7 +6,7 @@ import { useWebSocketRoom } from '../context/WebSocketRoomContext';
 import Button from './Button';
 import ThemeToggle from './ThemeToggle';
 import Logo from './Logo';
-import WebSocketStatus from '../context/WebSocketStatus';
+import WebSocketStatus from './WebSocketStatus';
 
 const Header: React.FC = () => {
     const { room, leaveRoom } = useWebSocketRoom();

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useWebSocketRoom } from '../context/WebSocketRoomContext';
-import { ConnectionStatus } from '../lib/websocket';
+import { ConnectionStatus } from '../context/WebSocketRoomContext';
 
 interface WebSocketStatusProps {
     showLabel?: boolean;
@@ -13,7 +13,7 @@ const WebSocketStatus: React.FC<WebSocketStatusProps> = ({
     showLabel = true,
     className = '',
 }) => {
-    const { connectionStatus, isConnected } = useWebSocketRoom();
+    const { connectionStatus } = useWebSocketRoom();
 
     // Define status colors and labels
     const getStatusDetails = () => {
