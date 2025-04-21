@@ -54,6 +54,7 @@ export const WebSocketRoomProvider: React.FC<{ children: React.ReactNode }> = ({
     const [reconnectionAttempt, setReconnectionAttempt] = useState<number>(0);
     const [isConnected, setIsConnected] = useState<boolean>(true); // Default to true with polling
     const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(ConnectionStatus.CONNECTED);
+    const [connectionFailures, setConnectionFailures] = useState(0);
 
     // Set isClient to true once component mounts on client
     useEffect(() => {
@@ -67,6 +68,7 @@ export const WebSocketRoomProvider: React.FC<{ children: React.ReactNode }> = ({
         const handleConnect = () => {
             setIsConnected(true);
             setConnectionStatus(ConnectionStatus.CONNECTED);
+            setConnectionFailures(0);
         };
 
         const handleDisconnect = () => {
@@ -78,12 +80,32 @@ export const WebSocketRoomProvider: React.FC<{ children: React.ReactNode }> = ({
             setConnectionStatus(ConnectionStatus.RECONNECTING);
         };
 
+        const handleConnectionFailure = () => {
+            setConnectionFailures(prev => prev + 1);
+            if (connectionFailures >= 3) {
+                console.warn('Multiple WebSocket connection failures, switching to REST API mode');
+                setIsConnected(false);
+            }
+        };
+
+        const handleWebSocketError = (error: Error) => {
+            console.warn('WebSocket error detected:', error.message);
+            handleConnectionFailure();
+            if (room && room.id) {
+                refreshRoom(room.id).catch(err =>
+                    console.error('Failed to refresh room after WebSocket error:', err)
+                );
+            }
+        }
+
         const handleRoomUpdated = (payload: any) => {
             if (payload && payload.room) {
                 setRoom(payload.room);
             }
         };
 
+        webSocketManager.on('error', handleWebSocketError);
+        webSocketManager.on('reconnect_failed', handleConnectionFailure);
         webSocketManager.on('connect', handleConnect);
         webSocketManager.on('disconnect', handleDisconnect);
         webSocketManager.on('reconnecting', handleReconnecting);
@@ -104,6 +126,9 @@ export const WebSocketRoomProvider: React.FC<{ children: React.ReactNode }> = ({
 
         return () => {
             if (!webSocketManager) return;
+            if (!webSocketManager) return;
+            webSocketManager.off('error', handleWebSocketError);
+            webSocketManager.off('reconnect_failed', handleConnectionFailure);
             webSocketManager.off('connect', handleConnect);
             webSocketManager.off('disconnect', handleDisconnect);
             webSocketManager.off('reconnecting', handleReconnecting);

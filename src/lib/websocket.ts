@@ -51,18 +51,44 @@ export class WebSocketManager {
         }
 
         this.status = ConnectionStatus.CONNECTING;
+        this.emit('connecting');
 
         try {
+            // Create a new WebSocket connection with a timeout
             this.socket = new WebSocket(this.url);
 
-            this.socket.onopen = this.handleOpen.bind(this);
+            // Set a connection timeout (browsers don't have a built-in timeout for WebSocket connections)
+            const connectionTimeout = setTimeout(() => {
+                if (this.socket && this.socket.readyState !== WebSocket.OPEN) {
+                    console.warn('WebSocket connection timed out');
+
+                    // Force close and cleanup
+                    try {
+                        this.socket.close(1000, 'Connection timeout');
+                    } catch (e) {
+                        // Ignore errors on close
+                    }
+
+                    this.socket = null;
+                    this.status = ConnectionStatus.DISCONNECTED;
+                    this.emit('error', new Error('WebSocket connection timeout'));
+                    this.scheduleReconnect();
+                }
+            }, 10000); // 10 second timeout
+
+            // Set up event handlers
+            this.socket.onopen = () => {
+                clearTimeout(connectionTimeout);
+                this.handleOpen();
+            };
             this.socket.onmessage = this.handleMessage.bind(this);
             this.socket.onclose = this.handleClose.bind(this);
             this.socket.onerror = this.handleError.bind(this);
         } catch (error) {
             console.error('Error creating WebSocket connection:', error);
             this.status = ConnectionStatus.DISCONNECTED;
-            this.emit('error', new Error('Failed to create WebSocket connection'));
+            this.emit('error', new Error(`Failed to create WebSocket connection: ${error instanceof Error ? error.message : String(error)}`));
+            this.scheduleReconnect();
         }
     }
 
@@ -191,12 +217,53 @@ export class WebSocketManager {
      * Handle WebSocket error event
      */
     private handleError(event: Event): void {
-        console.error('WebSocket error:', event);
-        this.emit('error', new Error('WebSocket connection error'));
+        // Attempt to get detailed error information
+        let errorDetails = 'Unknown error';
 
-        // The socket will automatically try to reconnect
+        try {
+            // Extract useful properties from the event object
+            const eventProps = Object.getOwnPropertyNames(event)
+                .filter(prop => prop !== 'isTrusted' && prop !== 'currentTarget' && prop !== 'target')
+                .reduce((acc, prop) => {
+                    try {
+                        // @ts-ignore - Dynamically accessing properties
+                        acc[prop] = event[prop];
+                    } catch (e) {
+                        // Some properties might throw when accessed
+                    }
+                    return acc;
+                }, {} as Record<string, any>);
+
+            errorDetails = JSON.stringify(eventProps);
+        } catch (e) {
+            errorDetails = 'Error details could not be extracted';
+        }
+
+        // Log the error with any available details
+        console.error(`WebSocket error occurred: ${errorDetails}`);
+
+        // Close the existing socket if it's in a bad state
+        if (this.socket && this.socket.readyState !== WebSocket.CLOSED) {
+            try {
+                // Attempt a clean close with code 1006 (Abnormal Closure)
+                this.socket.close(1006, 'Error occurred');
+            } catch (closeError) {
+                console.error('Error while closing socket:', closeError);
+            }
+        }
+
+        // Reset the socket to null to force a new connection on reconnect
+        this.socket = null;
+
+        // Update status and stop heartbeat
         this.status = ConnectionStatus.DISCONNECTED;
         this.stopHeartbeat();
+
+        // Emit the error event with a meaningful message
+        this.emit('error', new Error(`WebSocket connection error: ${errorDetails}`));
+
+        // Schedule a reconnection attempt
+        this.scheduleReconnect();
     }
 
     /**
