@@ -1,200 +1,58 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Header from '../components/Header';
-import Card from '../components/Card';
-import Input from '../components/Input';
-import { useWebSocketRoom } from '../context/WebSocketRoomContext';
-import Logo from '../components/Logo';
-import Button from '../components/Button';
+import React, { useState } from 'react';
+import Link from 'next/link';
 
-const Home = () => {
-	const router = useRouter();
-	const { createRoom, joinRoom, checkRoomExists } = useWebSocketRoom();
-	const [isClient, setIsClient] = useState(false);
+const HomePage: React.FC = () => {
+    return (
+        <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-md w-full space-y-8">
+                <div className="text-center">
+                    <h1 className="text-4xl font-extrabold text-gray-900 mb-2">
+                        Story Point Estimator
+                    </h1>
+                    <p className="text-lg text-gray-600">
+                        Collaborative planning poker for agile teams
+                    </p>
+                </div>
 
-	const [roomId, setRoomId] = useState('');
-	const [name, setName] = useState('');
-	const [joinError, setJoinError] = useState('');
+                <div className="mt-10 space-y-4">
+                    <Link
+                        href="/room/create"
+                        className="group w-full flex justify-center py-3 px-4 border border-transparent text-lg font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                        Create a Room
+                    </Link>
 
-	const [roomName, setRoomName] = useState('');
-	const [roomDescription, setRoomDescription] = useState('');
-	const [hostName, setHostName] = useState('');
-	const [isSubmitting, setIsSubmitting] = useState(false);
+                    <Link
+                        href="/room/join"
+                        className="group w-full flex justify-center py-3 px-4 border border-gray-300 text-lg font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                        Join a Room
+                    </Link>
+                </div>
 
-	// Set client-side flag after hydration
-	useEffect(() => {
-		setIsClient(true);
-	}, []);
+                <div className="mt-10">
+                    <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+                        <div className="bg-white p-6 rounded-lg shadow">
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">Create</h3>
+                            <p className="text-gray-500">Create a room and invite your team members to join</p>
+                        </div>
 
-	const handleJoinRoom = async (e: React.FormEvent) => {
-		e.preventDefault();
-		setJoinError('');
-		setIsSubmitting(true);
+                        <div className="bg-white p-6 rounded-lg shadow">
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">Estimate</h3>
+                            <p className="text-gray-500">Vote on story points in real-time with your team</p>
+                        </div>
 
-		try {
-			if (!name.trim()) {
-				setJoinError('Please enter your name');
-				return;
-			}
+                        <div className="bg-white p-6 rounded-lg shadow">
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">Decide</h3>
+                            <p className="text-gray-500">Reveal votes and reach consensus on story point estimates</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
-			// Format the room ID: trim whitespace and convert to uppercase
-			const formattedRoomId = roomId.trim().toUpperCase();
-
-			if (!formattedRoomId) {
-				setJoinError('Please enter a room code');
-				return;
-			}
-
-			// Check if room exists
-			const roomExists = await checkRoomExists(formattedRoomId);
-			if (!roomExists) {
-				setJoinError('Room not found. Please check the room code');
-				return;
-			}
-
-			// Join the room
-			const success = await joinRoom(formattedRoomId, name.trim());
-			if (success) {
-				router.push(`/room/${formattedRoomId}`);
-			} else {
-				setJoinError('Failed to join room. Please try again.');
-			}
-		} catch (error) {
-			console.error('Error joining room:', error);
-			setJoinError('An error occurred. Please try again.');
-		} finally {
-			setIsSubmitting(false);
-		}
-	};
-
-	const handleCreateRoom = async (e: React.FormEvent) => {
-		e.preventDefault();
-		setIsSubmitting(true);
-
-		try {
-			const trimmedRoomName = roomName.trim();
-			const trimmedHostName = hostName.trim();
-
-			if (!trimmedRoomName || !trimmedHostName) {
-				return;
-			}
-
-			const newRoomId = await createRoom(
-				trimmedRoomName,
-				roomDescription.trim(),
-				trimmedHostName,
-			);
-
-			if (newRoomId) {
-				router.push(`/room/${newRoomId}`);
-			}
-		} catch (error) {
-			console.error('Error creating room:', error);
-		} finally {
-			setIsSubmitting(false);
-		}
-	};
-
-	return (
-		<div className="min-h-screen transition-colors">
-			<Header />
-			<main className="max-w-4xl mx-auto px-4 py-12">
-				<div className="text-center mb-12">
-					<div className="flex justify-center mb-4">
-						<Logo size="lg" showText={false} />
-					</div>
-					<h1 className="text-4xl font-bold mb-4 text-primary-700 dark:text-primary-400">
-						Story Point Estimator
-					</h1>
-					<p className="text-lg text-gray-600 dark:text-gray-400">
-						Simple, real-time story point estimation for agile teams
-					</p>
-				</div>
-
-				<div className="grid md:grid-cols-2 gap-8">
-					{/* Join Room */}
-					<Card>
-						<h2 className="text-2xl font-bold mb-6 text-primary-600 dark:text-primary-500">
-							Join a Room
-						</h2>
-						<form onSubmit={handleJoinRoom}>
-							<Input
-								id="join-room-id"
-								label="Room Code"
-								placeholder="Enter room code"
-								value={roomId}
-								onChange={(e) => setRoomId(e.target.value)}
-								required
-							/>
-							<Input
-								id="join-name"
-								label="Your Name"
-								placeholder="Enter your name"
-								value={name}
-								onChange={(e) => setName(e.target.value)}
-								required
-							/>
-							{joinError && (
-								<p className="text-red-500 dark:text-red-400 text-sm mb-4">{joinError}</p>
-							)}
-							<Button
-								type="submit"
-								disabled={isSubmitting}
-								variant="primary"
-								fullWidth
-								className="mt-2"
-							>
-								{isSubmitting ? 'Joining...' : 'Join Room'}
-							</Button>
-						</form>
-					</Card>
-
-					{/* Create Room */}
-					<Card>
-						<h2 className="text-2xl font-bold mb-6 text-primary-600 dark:text-primary-500">
-							Create a Room
-						</h2>
-						<form onSubmit={handleCreateRoom}>
-							<Input
-								id="create-name"
-								label="Your Name"
-								placeholder="Enter your name"
-								value={hostName}
-								onChange={(e) => setHostName(e.target.value)}
-								required
-							/>
-							<Input
-								id="room-name"
-								label="Room Name"
-								placeholder="Enter room name"
-								value={roomName}
-								onChange={(e) => setRoomName(e.target.value)}
-								required
-							/>
-							<Input
-								id="room-description"
-								label="Description (Optional)"
-								placeholder="Enter room description"
-								value={roomDescription}
-								onChange={(e) => setRoomDescription(e.target.value)}
-							/>
-							<Button
-								type="submit"
-								disabled={isSubmitting}
-								variant="primary"
-								fullWidth
-								className="mt-2"
-							>
-								{isSubmitting ? 'Creating...' : 'Create Room'}
-							</Button>
-						</form>
-					</Card>
-				</div>
-			</main>
-		</div>
-	);
-}
-
-export default Home;
+export default HomePage;

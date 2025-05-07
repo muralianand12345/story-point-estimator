@@ -1,354 +1,249 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useWebSocketRoom } from '../../../context/WebSocketRoomContext';
-import Header from '../../../components/Header';
-import Card from '../../../components/Card';
-import VotingCard from '../../../components/VotingCard';
-import ParticipantList from '../../../components/ParticipantList';
-import VotingResult from '../../../components/VotingResult';
-import ShareRoom from '../../../components/ShareRoom';
-import Button from '../../../components/Button';
-import Logo from '../../../components/Logo';
-import { ConnectionStatus } from '../../../lib/websocket';
+import Link from 'next/link';
+import { v4 as uuidv4 } from 'uuid';
+import { socketClient } from '@/lib/socket';
+import { MessageType, RoomUser, Story, Vote, Room } from '@/lib/types';
+import UserList from '@/components/UserList';
+import StoryList from '@/components/StoryList';
+import VotingPanel from '@/components/VotingPanel';
 
-const RoomPage = () => {
-	const params = useParams();
-	const router = useRouter();
+const RoomPage: React.FC = () => {
+    const params = useParams();
+    const router = useRouter();
+    const roomId = params.id as string;
 
-	// Extract room ID from params
-	const roomId = typeof params.id === 'string'
-		? params.id
-		: Array.isArray(params.id)
-			? params.id[0]
-			: '';
+    const [userId, setUserId] = useState<string>('');
+    const [userName, setUserName] = useState<string>('');
+    const [room, setRoom] = useState<Room | null>(null);
+    const [stories, setStories] = useState<Story[]>([]);
+    const [users, setUsers] = useState<RoomUser[]>([]);
+    const [votes, setVotes] = useState<Vote[]>([]);
+    const [currentStory, setCurrentStory] = useState<Story | null>(null);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [isConnected, setIsConnected] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-	const formattedRoomId = roomId.trim().toUpperCase();
+    // Initialize connection and data
+    useEffect(() => {
+        // Check if user ID exists in localStorage
+        const storedUserId = localStorage.getItem('userId');
+        const storedUserName = localStorage.getItem('userName');
 
-	const {
-		room,
-		participantId,
-		submitVote,
-		revealVotes,
-		resetVotes,
-		refreshRoom,
-		joinRoom,
-		error,
-		connectionStatus,
-		isConnected
-	} = useWebSocketRoom();
+        if (!storedUserId || !storedUserName) {
+            // Redirect to join page if no user data
+            router.push('/room/join');
+            return;
+        }
 
-	const [selectedVote, setSelectedVote] = useState<string | null>(null);
-	const [isClient, setIsClient] = useState(false);
-	const initialSetupDone = useRef(false);
-	const [isLoading, setIsLoading] = useState(true);
-	const [reconnectAttempt, setReconnectAttempt] = useState(0);
-	const [isRejoining, setIsRejoining] = useState(false);
+        setUserId(storedUserId);
+        setUserName(storedUserName);
 
-	// Set isClient to true once mounted
-	useEffect(() => {
-		setIsClient(true);
-		setIsLoading(true);
-	}, []);
+        // Connect to WebSocket
+        const connect = async () => {
+            try {
+                if (!socketClient) {
+                    throw new Error('WebSocket client not available');
+                }
 
-	// Initial setup - fetch room data
-	useEffect(() => {
-		if (!formattedRoomId || !isClient) return;
-		if (initialSetupDone.current) return;
+                await socketClient.connect();
+                setIsConnected(true);
 
-		// Initial fetch of room data
-		refreshRoom(formattedRoomId).then(() => {
-			setIsLoading(false);
-			initialSetupDone.current = true;
-		}).catch(err => {
-			console.error("Error refreshing room:", err);
-			setIsLoading(false);
-			initialSetupDone.current = true;
-		});
-	}, [formattedRoomId, refreshRoom, isClient]);
+                // Join room
+                socketClient.joinRoom(roomId, storedUserId, storedUserName);
 
-	// Update selected vote when room changes
-	useEffect(() => {
-		if (!room || !participantId) return;
+                // Register event handlers
+                socketClient.on(MessageType.ROOM_DATA, handleRoomData);
+                socketClient.on(MessageType.ERROR, handleError);
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'Failed to connect');
+            }
+        };
 
-		const participant = room.participants.find((p) => p.id === participantId);
-		if (participant && participant.vote) {
-			setSelectedVote(participant.vote);
-		} else if (room.isRevealed === false) {
-			// Reset selected vote when a new round starts
-			setSelectedVote(null);
-		}
-	}, [room, participantId]);
+        connect();
 
-	// Redirect if not in this room or room doesn't exist
-	useEffect(() => {
-		if (!isClient || isLoading) return;
+        // Cleanup on unmount
+        return () => {
+            if (socketClient) {
+                socketClient.off(MessageType.ROOM_DATA, handleRoomData);
+                socketClient.off(MessageType.ERROR, handleError);
+                socketClient.leaveRoom();
+            }
+        };
+    }, [roomId, router]);
 
-		// If we have loaded and don't have room data, redirect to home
-		if (!isLoading && !room) {
-			console.log("No room data found, redirecting to home");
-			router.push('/');
-		}
-	}, [room, router, isClient, isLoading]);
+    // Handle room data updates
+    const handleRoomData = (payload: any) => {
+        setRoom(payload.room);
+        setStories(payload.stories || []);
+        setUsers(payload.users || []);
+        setVotes(payload.votes || []);
+        setCurrentStory(payload.currentStory || null);
 
-	// Attempt automatic rejoin if we have a room but no participantId
-	useEffect(() => {
-		if (!isClient || isLoading || !room || participantId || isRejoining) return;
+        // Check if user is admin
+        const user = payload.users?.find((u: RoomUser) => u.userId === userId);
+        setIsAdmin(user?.isAdmin || false);
+    };
 
-		const storedParticipantName = localStorage.getItem('participantName');
-		const storedRoomId = localStorage.getItem('currentRoomId');
+    // Handle WebSocket errors
+    const handleError = (payload: any) => {
+        setError(payload.message || 'An error occurred');
+    };
 
-		// Only auto-rejoin if the stored room ID matches the current room
-		if (storedParticipantName && storedRoomId === formattedRoomId) {
-			console.log("Attempting automatic rejoin with stored name:", storedParticipantName);
-			setIsRejoining(true);
-			handleRejoin();
-		}
-	}, [isClient, isLoading, room, participantId, formattedRoomId]);
+    // Handle story selection
+    const handleStorySelect = (storyId: string) => {
+        const story = stories.find(s => s.id === storyId);
+        if (story) {
+            setCurrentStory(story);
+        }
+    };
 
-	// Handle vote selection
-	const handleVoteSelect = (vote: string) => {
-		if (!participantId) {
-			console.error("Cannot vote: No participant ID");
-			return;
-		}
+    // Handle voting
+    const handleVote = (value: string) => {
+        if (currentStory && socketClient) {
+            socketClient.vote(roomId, currentStory.id, userId, value);
+        }
+    };
 
-		setSelectedVote(vote);
-		submitVote(vote);
-	};
+    // Handle revealing votes
+    const handleRevealVotes = () => {
+        if (currentStory && socketClient) {
+            socketClient.revealVotes(roomId, currentStory.id);
+        }
+    };
 
-	// Handle reveal votes
-	const handleRevealVotes = () => {
-		revealVotes();
-	};
+    // Handle resetting votes
+    const handleResetVotes = () => {
+        if (currentStory && socketClient) {
+            socketClient.resetVotes(roomId, currentStory.id);
+        }
+    };
 
-	// Handle reset voting
-	const handleResetVoting = () => {
-		resetVotes();
-		setSelectedVote(null);
-	};
+    // Handle moving to next story
+    const handleNextStory = () => {
+        if (currentStory && socketClient) {
+            socketClient.nextStory(roomId, currentStory.id);
+        }
+    };
 
-	// Handle rejoin attempt
-	const handleRejoin = async () => {
-		if (!room) return;
+    // Handle creating a new story
+    const handleCreateStory = (title: string, description: string) => {
+        if (socketClient) {
+            socketClient.createStory(roomId, title, description);
+        }
+    };
 
-		// Get participant name from localStorage if possible
-		const storedParticipantName = localStorage.getItem('participantName');
-		if (!storedParticipantName) {
-			// If we don't have the name stored, redirect to join page
-			router.push(`/join/${formattedRoomId}`);
-			return;
-		}
+    // Show error if connection failed
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="max-w-md w-full bg-white rounded-lg shadow p-6">
+                    <h2 className="text-xl font-semibold text-red-600 mb-4">Error</h2>
+                    <p className="mb-6">{error}</p>
+                    <Link
+                        href="/"
+                        className="block w-full text-center py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                        Back to Home
+                    </Link>
+                </div>
+            </div>
+        );
+    }
 
-		setReconnectAttempt(prev => prev + 1);
-		setIsRejoining(true);
+    // Show loading state
+    if (!isConnected || !room) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <h2 className="text-xl font-semibold mb-4">Connecting to room...</h2>
+                    <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
+                </div>
+            </div>
+        );
+    }
 
-		try {
-			const success = await joinRoom(formattedRoomId, storedParticipantName);
-			if (success) {
-				// Force refresh after successful rejoin
-				await refreshRoom(formattedRoomId);
-			} else {
-				// If we couldn't rejoin with the same name, redirect to join page
-				router.push(`/join/${formattedRoomId}`);
-			}
-		} catch (error) {
-			console.error("Error during rejoin:", error);
-		} finally {
-			setIsRejoining(false);
-		}
-	};
+    return (
+        <div className="min-h-screen bg-gray-50 p-4">
+            <div className="max-w-6xl mx-auto">
+                <header className="bg-white rounded-lg shadow p-4 mb-6">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+                        <div>
+                            <h1 className="text-2xl font-bold">{room.name}</h1>
+                            <div className="flex items-center mt-2">
+                                <span className="text-gray-600 mr-2">Room Code:</span>
+                                <span className="font-mono bg-gray-100 px-2 py-1 rounded">{room.roomCode}</span>
+                            </div>
+                        </div>
+                        <div className="mt-4 md:mt-0">
+                            <Link
+                                href="/"
+                                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                            >
+                                Leave Room
+                            </Link>
+                        </div>
+                    </div>
+                </header>
 
-	// Show loading state
-	if (isLoading || !isClient) {
-		return (
-			<div className="min-h-screen">
-				<Header />
-				<div className="flex flex-col items-center justify-center min-h-[60vh]">
-					<Logo size="lg" className="mb-6" />
-					<p className="text-lg text-gray-600 dark:text-gray-400">Loading room data...</p>
-				</div>
-			</div>
-		);
-	}
+                <div className="flex flex-col lg:flex-row gap-6">
+                    <div className="lg:w-1/4">
+                        <UserList
+                            users={users}
+                            votes={votes}
+                            currentStoryId={currentStory?.id}
+                            isRevealed={currentStory?.isRevealed || false}
+                        />
+                    </div>
 
-	// Show error if room not found
-	if (!room) {
-		return (
-			<div className="min-h-screen">
-				<Header />
-				<main className="max-w-md mx-auto px-4 py-12">
-					<Card>
-						<h1 className="text-xl font-bold mb-4 text-primary-700 dark:text-primary-400">Room Not Found</h1>
-						<p className="text-gray-600 dark:text-gray-400 mb-6">
-							The room you&apos;re trying to access doesn&apos;t exist or has been closed.
-						</p>
-						<Button
-							onClick={() => router.push('/')}
-							variant="primary"
-						>
-							Back to Home
-						</Button>
-					</Card>
-				</main>
-			</div>
-		);
-	}
+                    <div className="lg:w-3/4">
+                        <div className="bg-white rounded-lg shadow p-4 mb-6">
+                            {currentStory ? (
+                                <div>
+                                    <h2 className="text-xl font-semibold mb-2">{currentStory.title}</h2>
+                                    {currentStory.description && (
+                                        <p className="text-gray-600 mb-4">{currentStory.description}</p>
+                                    )}
 
-	// Show connection issue banner
-	const showConnectionIssue = connectionStatus === ConnectionStatus.DISCONNECTED ||
-		connectionStatus === ConnectionStatus.RECONNECTING;
+                                    <VotingPanel
+                                        storyId={currentStory.id}
+                                        userId={userId}
+                                        roomId={roomId}
+                                        isRevealed={currentStory.isRevealed}
+                                        votes={votes}
+                                        onVote={handleVote}
+                                        onReveal={handleRevealVotes}
+                                        onReset={handleResetVotes}
+                                        onNextStory={handleNextStory}
+                                        isAdmin={isAdmin}
+                                    />
+                                </div>
+                            ) : (
+                                <div className="text-center py-10">
+                                    <h2 className="text-xl font-semibold mb-2">No Active Story</h2>
+                                    <p className="text-gray-600">
+                                        {stories.length > 0
+                                            ? 'Select a story from the list to start estimating'
+                                            : 'No stories have been added yet'}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
 
-	// Show participant connection issue with rejoin option
-	if (!participantId) {
-		return (
-			<div className="min-h-screen">
-				<Header />
-				<main className="max-w-md mx-auto px-4 py-12">
-					<Card>
-						<h1 className="text-xl font-bold mb-4 text-primary-700 dark:text-primary-400">Connection Issue</h1>
-						<p className="text-gray-600 dark:text-gray-400 mb-6">
-							You&apos;re not properly connected to this room. Please try joining again.
-						</p>
-						<div className="flex space-x-4">
-							<Button
-								onClick={handleRejoin}
-								variant="primary"
-								className="flex-1"
-								disabled={isRejoining || reconnectAttempt > 3}
-							>
-								{isRejoining ? 'Rejoining...' : 'Rejoin Room'}
-							</Button>
-							<Button
-								onClick={() => router.push(`/join/${formattedRoomId}`)}
-								variant="outline"
-								className="flex-1"
-							>
-								Join With New Name
-							</Button>
-						</div>
-						{reconnectAttempt > 3 && (
-							<p className="mt-4 text-sm text-yellow-600 dark:text-yellow-400">
-								Multiple rejoin attempts failed. You may need to join with a new name.
-							</p>
-						)}
-					</Card>
-				</main>
-			</div>
-		);
-	}
-
-	const isHost =
-		room.participants.find((p) => p.id === participantId)?.isHost || false;
-	const allVoted = room.participants.every((p) => p.vote !== null);
-
-	return (
-		<div className="min-h-screen">
-			<Header />
-
-			<main className="max-w-4xl mx-auto px-4 py-8">
-				{showConnectionIssue && (
-					<div className="bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-400 dark:border-yellow-800 text-yellow-700 dark:text-yellow-400 px-4 py-3 rounded mb-6">
-						<p className="flex items-center">
-							<svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-								<path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-							</svg>
-							{connectionStatus === ConnectionStatus.RECONNECTING ?
-								'Reconnecting to server...' :
-								'Connection lost. Real-time updates are disabled. Try refreshing the page.'}
-						</p>
-					</div>
-				)}
-
-				<div className="mb-6">
-					<h1 className="text-2xl font-bold text-primary-700 dark:text-primary-400">{room.name}</h1>
-					{room.description && (
-						<p className="text-gray-600 dark:text-gray-400 mt-1">{room.description}</p>
-					)}
-				</div>
-
-				{error && (
-					<div className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded mb-4">
-						{error}
-					</div>
-				)}
-
-				<div className="grid md:grid-cols-3 gap-6">
-					<div className="md:col-span-2">
-						<Card>
-							<div className="flex justify-between items-center mb-4">
-								<h2 className="text-lg font-medium text-primary-700 dark:text-primary-400">
-									Cast Your Vote
-								</h2>
-
-								{isHost && (
-									<div className="flex space-x-2">
-										{!room.isRevealed ? (
-											<Button
-												variant="primary"
-												onClick={handleRevealVotes}
-												disabled={!allVoted || !isConnected}
-												className="whitespace-nowrap"
-												fullWidth={false}
-											>
-												Reveal Votes
-											</Button>
-										) : (
-											<Button
-												variant="secondary"
-												onClick={handleResetVoting}
-												disabled={!isConnected}
-												fullWidth={false}
-												className="whitespace-nowrap"
-											>
-												Reset Voting
-											</Button>
-										)}
-									</div>
-								)}
-							</div>
-
-							<div className="grid grid-cols-3 sm:grid-cols-5 gap-3 mb-6">
-								{room.votingOptions.map((option) => (
-									<VotingCard
-										key={option}
-										value={option}
-										selected={selectedVote === option}
-										onClick={handleVoteSelect}
-										disabled={room.isRevealed || !isConnected}
-									/>
-								))}
-							</div>
-
-							{room.isRevealed && (
-								<VotingResult
-									votes={room.participants.map((p) => p.vote)}
-									votingOptions={room.votingOptions}
-								/>
-							)}
-						</Card>
-					</div>
-
-					<div>
-						{isHost && <ShareRoom roomId={room.id} />}
-
-						<Card>
-							<h2 className="text-lg font-medium mb-4 text-primary-700 dark:text-primary-400">
-								Participants ({room.participants.length})
-							</h2>
-
-							<ParticipantList
-								participants={room.participants}
-								isRevealed={room.isRevealed}
-								participantId={participantId}
-							/>
-						</Card>
-					</div>
-				</div>
-			</main>
-		</div>
-	);
-}
+                        <StoryList
+                            stories={stories}
+                            currentStoryId={currentStory?.id}
+                            onStorySelect={handleStorySelect}
+                            onCreateStory={handleCreateStory}
+                            isAdmin={isAdmin}
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export default RoomPage;

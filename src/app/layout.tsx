@@ -1,43 +1,22 @@
-// src/app/layout.tsx
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import { WebSocketRoomProvider } from "../context/WebSocketRoomContext";
-import ThemeProvider from "../context/ThemeContext";
-import { Analytics } from "@vercel/analytics/react";
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
 
-const geistSans = Geist({
-    variable: "--font-geist-sans",
-    subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-    variable: "--font-geist-mono",
-    subsets: ["latin"],
-});
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-    title: "Story Point Estimator",
-    description: "Collaborative story point estimation for agile teams",
+    title: 'Story Point Estimator',
+    description: 'Collaborative planning poker for agile teams',
 };
 
-const RootLayout = async ({
+export default function RootLayout({
     children,
 }: Readonly<{
     children: React.ReactNode;
-}>) => {
+}>) {
     return (
-        <html lang="en" suppressHydrationWarning>
-            <Analytics />
-            <body
-                className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen transition-colors`}
-            >
-                <ThemeProvider>
-                    <WebSocketRoomProvider>{children}</WebSocketRoomProvider>
-                </ThemeProvider>
-            </body>
+        <html lang="en">
+            <body className={inter.className}>{children}</body>
         </html>
     );
 }
-
-export default RootLayout;
