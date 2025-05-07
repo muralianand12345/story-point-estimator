@@ -1,138 +1,193 @@
 "use client"
 
-import type React from "react"
-import Link from "next/link"
-import { ThemeToggle } from "@/components/theme-toggle"
+import React from "react";
+import Link from "next/link";
+import { ThemeToggle } from "@/components/theme-toggle";
+import Container from '@mui/material/Container';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Grid from '@mui/material/Grid';
+import Paper from '@mui/material/Paper';
+import AddIcon from '@mui/icons-material/Add';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
+import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
 
 const HomePage: React.FC = () => {
     return (
-        <div className="min-h-screen bg-background">
-            <div className="container mx-auto px-4 py-16">
-                <header className="flex justify-end mb-8">
+        <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+            <Container maxWidth="lg" sx={{ px: 2, py: 8 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 4 }}>
                     <ThemeToggle />
-                </header>
+                </Box>
 
-                <div className="text-center mb-16">
-                    <h1 className="text-5xl font-extrabold text-foreground mb-4">Story Point Estimator</h1>
-                    <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                <Box sx={{ textAlign: 'center', mb: 8 }}>
+                    <Typography variant="h2" component="h1" sx={{ fontWeight: 800, mb: 2 }}>
+                        Story Point Estimator
+                    </Typography>
+                    <Typography variant="h5" color="textSecondary" sx={{ maxWidth: 'md', mx: 'auto' }}>
                         A collaborative planning poker tool for agile teams to estimate story points efficiently
-                    </p>
-                </div>
+                    </Typography>
+                </Box>
 
-                <div className="max-w-md mx-auto mb-16">
-                    <div className="space-y-4">
-                        <Link
+                <Box sx={{ maxWidth: 'sm', mx: 'auto', mb: 8 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <Button
+                            component={Link}
                             href="/room/create"
-                            className="group relative w-full flex justify-center py-4 px-4 border border-transparent text-lg font-medium rounded-xl text-primary-foreground bg-primary hover:bg-primary/90 transition-all shadow-md hover:shadow-lg"
+                            variant="contained"
+                            color="primary"
+                            size="large"
+                            startIcon={<AddIcon />}
+                            sx={{ py: 1.5, fontSize: '1.1rem', borderRadius: 2 }}
                         >
-                            <span className="absolute left-4 top-1/2 transform -translate-y-1/2">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-6 w-6"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                </svg>
-                            </span>
                             Create a Room
-                        </Link>
+                        </Button>
 
-                        <Link
+                        <Button
+                            component={Link}
                             href="/room/join"
-                            className="group relative w-full flex justify-center py-4 px-4 border border-input text-lg font-medium rounded-xl text-foreground bg-background hover:bg-accent transition-all shadow-sm hover:shadow-md"
+                            variant="outlined"
+                            size="large"
+                            startIcon={<ArrowBackIcon />}
+                            sx={{ py: 1.5, fontSize: '1.1rem', borderRadius: 2 }}
                         >
-                            <span className="absolute left-4 top-1/2 transform -translate-y-1/2">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-6 w-6"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14" />
-                                </svg>
-                            </span>
                             Join a Room
-                        </Link>
-                    </div>
-                </div>
+                        </Button>
+                    </Box>
+                </Box>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-                    <div className="bg-card p-8 rounded-2xl shadow-md transform transition-all hover:scale-105">
-                        <div className="flex items-center justify-center h-16 w-16 bg-primary/10 text-primary rounded-full mb-6 mx-auto">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-8 w-8"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
+                <Grid container spacing={4} sx={{ maxWidth: 'lg', mx: 'auto' }}>
+                    <Grid item xs={12} md={4}>
+                        <Paper
+                            elevation={3}
+                            sx={{
+                                p: 4,
+                                borderRadius: 4,
+                                height: '100%',
+                                textAlign: 'center',
+                                transform: 'scale(1)',
+                                transition: 'transform 0.3s ease',
+                                '&:hover': {
+                                    transform: 'scale(1.05)'
+                                }
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    height: 64,
+                                    width: 64,
+                                    borderRadius: '50%',
+                                    bgcolor: 'primary.light',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    mx: 'auto',
+                                    mb: 3
+                                }}
                             >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                            </svg>
-                        </div>
-                        <h3 className="text-xl font-bold text-foreground mb-3 text-center">Create</h3>
-                        <p className="text-muted-foreground text-center">
-                            Create a room and invite your team members to join for estimation sessions
-                        </p>
-                    </div>
+                                <AddCircleOutlineIcon sx={{ color: 'primary.main', fontSize: 32 }} />
+                            </Box>
+                            <Typography variant="h5" component="h3" fontWeight="bold" sx={{ mb: 1.5 }}>
+                                Create
+                            </Typography>
+                            <Typography color="textSecondary">
+                                Create a room and invite your team members to join for estimation sessions
+                            </Typography>
+                        </Paper>
+                    </Grid>
 
-                    <div className="bg-card p-8 rounded-2xl shadow-md transform transition-all hover:scale-105">
-                        <div className="flex items-center justify-center h-16 w-16 bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 rounded-full mb-6 mx-auto">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-8 w-8"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
+                    <Grid item xs={12} md={4}>
+                        <Paper
+                            elevation={3}
+                            sx={{
+                                p: 4,
+                                borderRadius: 4,
+                                height: '100%',
+                                textAlign: 'center',
+                                transform: 'scale(1)',
+                                transition: 'transform 0.3s ease',
+                                '&:hover': {
+                                    transform: 'scale(1.05)'
+                                }
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    height: 64,
+                                    width: 64,
+                                    borderRadius: '50%',
+                                    bgcolor: 'success.light',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    mx: 'auto',
+                                    mb: 3
+                                }}
                             >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                                />
-                            </svg>
-                        </div>
-                        <h3 className="text-xl font-bold text-foreground mb-3 text-center">Estimate</h3>
-                        <p className="text-muted-foreground text-center">
-                            Vote on story points in real-time with your team for efficient estimation
-                        </p>
-                    </div>
+                                <AssignmentOutlinedIcon sx={{ color: 'success.main', fontSize: 32 }} />
+                            </Box>
+                            <Typography variant="h5" component="h3" fontWeight="bold" sx={{ mb: 1.5 }}>
+                                Estimate
+                            </Typography>
+                            <Typography color="textSecondary">
+                                Vote on story points in real-time with your team for efficient estimation
+                            </Typography>
+                        </Paper>
+                    </Grid>
 
-                    <div className="bg-card p-8 rounded-2xl shadow-md transform transition-all hover:scale-105">
-                        <div className="flex items-center justify-center h-16 w-16 bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 rounded-full mb-6 mx-auto">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-8 w-8"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
+                    <Grid item xs={12} md={4}>
+                        <Paper
+                            elevation={3}
+                            sx={{
+                                p: 4,
+                                borderRadius: 4,
+                                height: '100%',
+                                textAlign: 'center',
+                                transform: 'scale(1)',
+                                transition: 'transform 0.3s ease',
+                                '&:hover': {
+                                    transform: 'scale(1.05)'
+                                }
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    height: 64,
+                                    width: 64,
+                                    borderRadius: '50%',
+                                    bgcolor: 'purple.100',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    mx: 'auto',
+                                    mb: 3
+                                }}
                             >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                            </svg>
-                        </div>
-                        <h3 className="text-xl font-bold text-foreground mb-3 text-center">Decide</h3>
-                        <p className="text-muted-foreground text-center">
-                            Reveal votes and reach consensus on story point estimates as a team
-                        </p>
-                    </div>
-                </div>
-            </div>
+                                <CheckCircleOutlinedIcon sx={{ color: 'purple.600', fontSize: 32 }} />
+                            </Box>
+                            <Typography variant="h5" component="h3" fontWeight="bold" sx={{ mb: 1.5 }}>
+                                Decide
+                            </Typography>
+                            <Typography color="textSecondary">
+                                Reveal votes and reach consensus on story point estimates as a team
+                            </Typography>
+                        </Paper>
+                    </Grid>
+                </Grid>
+            </Container>
 
-            <footer className="py-8 mt-20 border-t border-border">
-                <div className="container mx-auto px-4 text-center text-muted-foreground">
-                    <p>Story Point Estimator - A collaboration tool for agile teams</p>
-                </div>
-            </footer>
-        </div>
-    )
-}
+            <Box component="footer" sx={{ py: 4, mt: 10, borderTop: 1, borderColor: 'divider' }}>
+                <Container maxWidth="lg">
+                    <Typography align="center" color="textSecondary">
+                        Story Point Estimator - A collaboration tool for agile teams
+                    </Typography>
+                </Container>
+            </Box>
+        </Box>
+    );
+};
 
-export default HomePage
+export default HomePage;

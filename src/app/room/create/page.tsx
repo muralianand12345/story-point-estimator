@@ -1,25 +1,34 @@
 "use client"
 
-import type React from "react"
-import Link from "next/link"
-import RoomCreation from "@/components/RoomCreation"
-import { ThemeToggle } from "@/components/theme-toggle"
+import React from "react";
+import Link from "next/link";
+import RoomCreation from "@/components/RoomCreation";
+import { ThemeToggle } from "@/components/theme-toggle";
+import Container from '@mui/material/Container';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 const CreateRoomPage: React.FC = () => {
     return (
-        <div className="min-h-screen bg-background flex flex-col py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mx-auto w-full">
-                <div className="flex justify-between items-center mb-8">
-                    <Link href="/" className="text-primary hover:text-primary/90">
-                        &larr; Back to Home
-                    </Link>
+        <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: 6, px: 2 }}>
+            <Container maxWidth="md">
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+                    <Button
+                        component={Link}
+                        href="/"
+                        startIcon={<ArrowBackIcon />}
+                        color="primary"
+                    >
+                        Back to Home
+                    </Button>
                     <ThemeToggle />
-                </div>
+                </Box>
 
                 <RoomCreation />
-            </div>
-        </div>
-    )
-}
+            </Container>
+        </Box>
+    );
+};
 
-export default CreateRoomPage
+export default CreateRoomPage;

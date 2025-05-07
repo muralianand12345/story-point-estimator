@@ -1,188 +1,254 @@
 "use client"
 
-import type React from "react"
-import { useState } from "react"
-import type { Story } from "@/lib/types"
+import React, { useState } from "react";
+import { Story } from "@/lib/types";
+import Box from '@mui/material/Box';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import TextField from '@mui/material/TextField';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
+import Chip from '@mui/material/Chip';
+import Divider from '@mui/material/Divider';
+import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
+import ListItemButton from '@mui/material/ListItemButton';
+import { styled } from '@mui/material/styles';
 
 interface StoryListProps {
-    stories: Story[]
-    currentStoryId?: string
-    onStorySelect: (storyId: string) => void
-    onCreateStory: (title: string, description: string) => void
-    isAdmin: boolean
+    stories: Story[];
+    currentStoryId?: string;
+    onStorySelect: (storyId: string) => void;
+    onCreateStory: (title: string, description: string) => void;
+    isAdmin: boolean;
 }
 
-const StoryList: React.FC<StoryListProps> = ({ stories, currentStoryId, onStorySelect, onCreateStory, isAdmin }) => {
-    const [showNewStoryForm, setShowNewStoryForm] = useState(false)
-    const [newStoryTitle, setNewStoryTitle] = useState("")
-    const [newStoryDescription, setNewStoryDescription] = useState("")
+const StoryListItem = styled(ListItemButton, {
+    shouldForwardProp: (prop) => prop !== 'isSelected'
+})<{ isSelected?: boolean }>(({ theme, isSelected }) => ({
+    borderRadius: theme.shape.borderRadius,
+    marginBottom: theme.spacing(1.5),
+    borderLeft: isSelected ? `4px solid ${theme.palette.primary.main}` : '4px solid transparent',
+    backgroundColor: isSelected ? theme.palette.primary.light : 'transparent',
+    '&:hover': {
+        backgroundColor: isSelected ? theme.palette.primary.light : theme.palette.action.hover,
+    },
+    padding: theme.spacing(2),
+}));
+
+const EmptyStoriesBox = styled(Box)(({ theme }) => ({
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing(5),
+    textAlign: 'center',
+}));
+
+const StoryList: React.FC<StoryListProps> = ({
+    stories,
+    currentStoryId,
+    onStorySelect,
+    onCreateStory,
+    isAdmin
+}) => {
+    const [showNewStoryForm, setShowNewStoryForm] = useState(false);
+    const [newStoryTitle, setNewStoryTitle] = useState("");
+    const [newStoryDescription, setNewStoryDescription] = useState("");
 
     const handleCreateStory = (e: React.FormEvent) => {
-        e.preventDefault()
+        e.preventDefault();
         if (newStoryTitle.trim()) {
-            onCreateStory(newStoryTitle.trim(), newStoryDescription.trim())
-            setNewStoryTitle("")
-            setNewStoryDescription("")
-            setShowNewStoryForm(false)
+            onCreateStory(newStoryTitle.trim(), newStoryDescription.trim());
+            setNewStoryTitle("");
+            setNewStoryDescription("");
+            setShowNewStoryForm(false);
         }
-    }
+    };
 
-    const activeStories = stories.filter((story) => story.isActive)
-    const completedStories = stories.filter((story) => !story.isActive)
+    const activeStories = stories.filter((story) => story.isActive);
+    const completedStories = stories.filter((story) => !story.isActive);
 
     return (
-        <div className="bg-card rounded-xl shadow-md p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-foreground">Stories</h2>
+        <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold' }}>
+                    Stories
+                </Typography>
                 {isAdmin && (
-                    <button
-                        className="text-primary hover:text-primary/90 flex items-center"
+                    <Button
+                        color="primary"
+                        startIcon={showNewStoryForm ? <CloseIcon /> : <AddIcon />}
                         onClick={() => setShowNewStoryForm(!showNewStoryForm)}
+                        variant="text"
                     >
-                        {showNewStoryForm ? (
-                            <>
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-5 w-5 mr-1"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                                Cancel
-                            </>
-                        ) : (
-                            <>
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-5 w-5 mr-1"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                </svg>
-                                Add Story
-                            </>
-                        )}
-                    </button>
+                        {showNewStoryForm ? "Cancel" : "Add Story"}
+                    </Button>
                 )}
-            </div>
+            </Box>
 
             {showNewStoryForm && (
-                <form onSubmit={handleCreateStory} className="mb-6 bg-muted p-5 rounded-xl shadow-inner">
-                    <div className="mb-4">
-                        <label htmlFor="storyTitle" className="block text-sm font-medium text-foreground mb-2">
-                            Title
-                        </label>
-                        <input
-                            type="text"
-                            id="storyTitle"
-                            value={newStoryTitle}
-                            onChange={(e) => setNewStoryTitle(e.target.value)}
-                            className="input"
-                            placeholder="Enter story title"
-                            required
-                        />
-                    </div>
-                    <div className="mb-4">
-                        <label htmlFor="storyDescription" className="block text-sm font-medium text-foreground mb-2">
-                            Description (optional)
-                        </label>
-                        <textarea
-                            id="storyDescription"
-                            value={newStoryDescription}
-                            onChange={(e) => setNewStoryDescription(e.target.value)}
-                            className="input"
-                            placeholder="Enter story description"
-                            rows={3}
-                        />
-                    </div>
-                    <button
+                <Box
+                    component="form"
+                    onSubmit={handleCreateStory}
+                    sx={{
+                        mb: 3,
+                        p: 2.5,
+                        bgcolor: 'action.hover',
+                        borderRadius: 2,
+                    }}
+                >
+                    <TextField
+                        fullWidth
+                        label="Title"
+                        id="storyTitle"
+                        value={newStoryTitle}
+                        onChange={(e) => setNewStoryTitle(e.target.value)}
+                        placeholder="Enter story title"
+                        required
+                        margin="normal"
+                    />
+                    <TextField
+                        fullWidth
+                        label="Description (optional)"
+                        id="storyDescription"
+                        value={newStoryDescription}
+                        onChange={(e) => setNewStoryDescription(e.target.value)}
+                        placeholder="Enter story description"
+                        multiline
+                        rows={3}
+                        margin="normal"
+                    />
+                    <Button
                         type="submit"
-                        className="px-5 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors shadow-md"
+                        variant="contained"
+                        color="primary"
+                        sx={{ mt: 2 }}
                     >
                         Create Story
-                    </button>
-                </form>
+                    </Button>
+                </Box>
             )}
 
             {activeStories.length === 0 && completedStories.length === 0 && !showNewStoryForm && (
-                <div className="py-10 text-center">
-                    <div className="mx-auto w-16 h-16 bg-muted flex items-center justify-center rounded-full mb-4">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-8 w-8 text-muted-foreground"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                            />
-                        </svg>
-                    </div>
-                    <p className="text-muted-foreground">
+                <EmptyStoriesBox>
+                    <Box
+                        sx={{
+                            width: 64,
+                            height: 64,
+                            borderRadius: '50%',
+                            bgcolor: 'action.hover',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            mb: 2
+                        }}
+                    >
+                        <AddIcon color="action" fontSize="large" />
+                    </Box>
+                    <Typography color="textSecondary">
                         No stories yet. {isAdmin ? "Add a story to get started." : "Waiting for admin to add stories."}
-                    </p>
-                </div>
+                    </Typography>
+                </EmptyStoriesBox>
             )}
 
             {activeStories.length > 0 && (
-                <div className="mb-6">
-                    <h3 className="text-md font-semibold text-primary mb-3 pb-2 border-b">Active Stories</h3>
-                    <ul className="space-y-3">
+                <Box sx={{ mb: 3 }}>
+                    <Typography
+                        variant="subtitle1"
+                        sx={{
+                            fontWeight: 600,
+                            color: 'primary.main',
+                            mb: 1.5,
+                            pb: 1,
+                            borderBottom: 1,
+                            borderColor: 'divider'
+                        }}
+                    >
+                        Active Stories
+                    </Typography>
+                    <List disablePadding>
                         {activeStories.map((story) => (
-                            <li
+                            <StoryListItem
                                 key={story.id}
-                                className={`
-                  p-4 rounded-lg cursor-pointer transition-all
-                  ${currentStoryId === story.id
-                                        ? "bg-primary/10 border-l-4 border-primary shadow-md"
-                                        : "hover:bg-accent border-l-4 border-transparent"
-                                    }
-                `}
+                                isSelected={currentStoryId === story.id}
                                 onClick={() => onStorySelect(story.id)}
                             >
-                                <div className="font-medium text-foreground">{story.title}</div>
-                                {story.description && <div className="text-sm text-muted-foreground mt-2">{story.description}</div>}
+                                <ListItemText
+                                    primary={<Typography fontWeight="medium">{story.title}</Typography>}
+                                    secondary={
+                                        story.description && (
+                                            <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                                                {story.description}
+                                            </Typography>
+                                        )
+                                    }
+                                />
                                 {story.isRevealed && (
-                                    <div className="mt-2">
-                                        <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 px-2 py-1 rounded-full">
-                                            Revealed
-                                        </span>
-                                    </div>
+                                    <Chip
+                                        label="Revealed"
+                                        color="success"
+                                        size="small"
+                                        sx={{ ml: 1 }}
+                                    />
                                 )}
-                            </li>
+                            </StoryListItem>
                         ))}
-                    </ul>
-                </div>
+                    </List>
+                </Box>
             )}
 
             {completedStories.length > 0 && (
-                <div>
-                    <h3 className="text-md font-semibold text-muted-foreground mb-3 pb-2 border-b">Completed Stories</h3>
-                    <ul className="space-y-3">
+                <Box>
+                    <Typography
+                        variant="subtitle1"
+                        sx={{
+                            fontWeight: 600,
+                            color: 'text.secondary',
+                            mb: 1.5,
+                            pb: 1,
+                            borderBottom: 1,
+                            borderColor: 'divider'
+                        }}
+                    >
+                        Completed Stories
+                    </Typography>
+                    <List disablePadding>
                         {completedStories.map((story) => (
-                            <li key={story.id} className="p-4 bg-muted rounded-lg opacity-80">
-                                <div className="font-medium text-foreground">{story.title}</div>
-                                {story.description && <div className="text-sm text-muted-foreground mt-2">{story.description}</div>}
-                                <div className="mt-2">
-                                    <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-full">
-                                        Completed
-                                    </span>
-                                </div>
-                            </li>
+                            <ListItem
+                                key={story.id}
+                                sx={{
+                                    bgcolor: 'action.hover',
+                                    borderRadius: 2,
+                                    opacity: 0.8,
+                                    mb: 1.5,
+                                    p: 2
+                                }}
+                            >
+                                <ListItemText
+                                    primary={<Typography fontWeight="medium">{story.title}</Typography>}
+                                    secondary={
+                                        story.description && (
+                                            <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                                                {story.description}
+                                            </Typography>
+                                        )
+                                    }
+                                />
+                                <Chip
+                                    label="Completed"
+                                    color="default"
+                                    size="small"
+                                />
+                            </ListItem>
                         ))}
-                    </ul>
-                </div>
+                    </List>
+                </Box>
             )}
-        </div>
-    )
-}
+        </Paper>
+    );
+};
 
-export default StoryList
+export default StoryList;
