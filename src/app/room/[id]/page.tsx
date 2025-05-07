@@ -168,19 +168,27 @@ const RoomPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-gray-50 p-4">
             <div className="max-w-6xl mx-auto">
-                <header className="bg-white rounded-lg shadow p-4 mb-6">
+                <header className="bg-white rounded-xl shadow-md p-6 mb-6">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                         <div>
-                            <h1 className="text-2xl font-bold">{room.name}</h1>
+                            <h1 className="text-3xl font-bold text-blue-900">{room.name}</h1>
                             <div className="flex items-center mt-2">
                                 <span className="text-gray-600 mr-2">Room Code:</span>
-                                <span className="font-mono bg-gray-100 px-2 py-1 rounded">{room.roomCode}</span>
+                                <span className="font-mono bg-blue-50 text-blue-800 px-3 py-1 rounded-lg">{room.roomCode}</span>
                             </div>
                         </div>
                         <div className="mt-4 md:mt-0">
+                            <button
+                                onClick={() => {/* Add copy code functionality */ }}
+                                className="mr-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                            </button>
                             <Link
                                 href="/"
-                                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                                className="px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
                             >
                                 Leave Room
                             </Link>

@@ -15,10 +15,12 @@ const UserList: React.FC<UserListProps> = ({
     isRevealed,
 }) => {
     return (
-        <div className="bg-white rounded-lg shadow p-4">
-            <h2 className="text-lg font-semibold mb-4">Participants ({users.length})</h2>
+        <div className="bg-white rounded-xl shadow-md p-6">
+            <h2 className="text-xl font-bold text-blue-900 mb-4">
+                Participants ({users.length})
+            </h2>
 
-            <ul className="space-y-2">
+            <ul className="space-y-3">
                 {users.map((roomUser) => {
                     const hasVoted = currentStoryId
                         ? votes.some(
@@ -34,31 +36,39 @@ const UserList: React.FC<UserListProps> = ({
                     return (
                         <li
                             key={roomUser.userId}
-                            className="flex items-center justify-between py-2 border-b last:border-b-0"
+                            className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors"
                         >
                             <div className="flex items-center">
-                                <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 text-white rounded-full flex items-center justify-center font-bold mr-3 shadow-sm">
                                     {roomUser.user.name.charAt(0).toUpperCase()}
                                 </div>
-                                <span>
-                                    {roomUser.user.name}
+                                <div>
+                                    <span className="font-medium text-gray-800">
+                                        {roomUser.user.name}
+                                    </span>
                                     {roomUser.isAdmin && (
-                                        <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                                        <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
                                             Admin
                                         </span>
                                     )}
-                                </span>
+                                </div>
                             </div>
 
                             <div>
                                 {hasVoted ? (
                                     isRevealed ? (
-                                        <span className="text-green-600 font-medium">{userVote?.value}</span>
+                                        <span className="text-green-600 font-medium px-3 py-1 bg-green-50 rounded-full">
+                                            {userVote?.value}
+                                        </span>
                                     ) : (
-                                        <span className="text-green-600">Voted</span>
+                                        <span className="text-green-600 px-3 py-1 bg-green-50 rounded-full">
+                                            Voted
+                                        </span>
                                     )
                                 ) : (
-                                    <span className="text-gray-400">Not voted</span>
+                                    <span className="text-gray-400 px-3 py-1 bg-gray-50 rounded-full">
+                                        Not voted
+                                    </span>
                                 )}
                             </div>
                         </li>
