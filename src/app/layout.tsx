@@ -1,6 +1,7 @@
-import type { Metadata } from 'next';
-import ThemeProvider from '@/components/ThemeProvider';
+'use client';
+
 import { Inter } from 'next/font/google';
+import ThemeProvider from '@/components/ThemeProvider';
 import './globals.css';
 
 // Configure the Inter font
@@ -9,11 +10,6 @@ const inter = Inter({
     display: 'swap',
 });
 
-export const metadata: Metadata = {
-    title: 'Story Point Estimator',
-    description: 'A collaborative tool for agile story point estimation',
-};
-
 export default function RootLayout({
     children,
 }: {
@@ -21,6 +17,10 @@ export default function RootLayout({
 }) {
     return (
         <html lang="en">
+            <head>
+                <title>Story Point Estimator</title>
+                <meta name="description" content="A collaborative tool for agile story point estimation" />
+            </head>
             <body className={inter.className}>
                 <ThemeProvider>
                     {children}

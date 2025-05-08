@@ -29,12 +29,17 @@ const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
         if (savedMode) {
             setMode(savedMode);
         }
+
+        // Add this to apply the data-theme attribute
+        document.documentElement.setAttribute('data-theme', savedMode || mode);
     }, []);
 
     const toggleColorMode = () => {
         setMode((prevMode) => {
             const newMode = prevMode === 'light' ? 'dark' : 'light';
             localStorage.setItem('themeMode', newMode);
+            // Update data-theme attribute when mode changes
+            document.documentElement.setAttribute('data-theme', newMode);
             return newMode;
         });
     };

@@ -193,7 +193,14 @@ const RoomPage: React.FC = () => {
         : '';
 
     return (
-        <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Container
+            maxWidth="lg"
+            sx={{
+                py: 4,
+                minHeight: '100vh',
+                backgroundColor: 'transparent'
+            }}
+        >
             <RoomHeader
                 roomName={room.name}
                 roomCode={room.roomCode}
@@ -202,7 +209,7 @@ const RoomPage: React.FC = () => {
             />
 
             <Grid container spacing={3}>
-                {/* Main estimation area - to be implemented */}
+                {/* Main estimation area */}
                 <Grid item xs={12} md={8}>
                     <Box sx={{
                         height: isMobile ? '300px' : '600px',

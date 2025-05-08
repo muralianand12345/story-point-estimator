@@ -115,13 +115,28 @@ const HomePage: React.FC = () => {
     };
 
     return (
-        <Container maxWidth="sm">
+        <Container
+            maxWidth="sm"
+            sx={{
+                minHeight: '100vh',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                backgroundColor: 'transparent'
+            }}
+        >
             <Box sx={{ position: 'absolute', top: 16, right: 16 }}>
                 <ThemeToggle />
             </Box>
 
             <Box sx={{ my: 8 }}>
-                <Paper elevation={3} sx={{ p: 4 }}>
+                <Paper
+                    elevation={3}
+                    sx={{
+                        p: 4,
+                        backgroundColor: theme.palette.background.paper
+                    }}
+                >
                     <Typography variant="h4" component="h1" align="center" gutterBottom>
                         Story Point Estimator
                     </Typography>
