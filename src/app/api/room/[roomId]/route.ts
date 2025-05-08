@@ -38,6 +38,7 @@ export async function GET(
         const room = {
             id: roomData.id,
             name: roomData.name,
+            roomCode: roomData.roomCode,
             hostId: roomData.hostId,
             isActive: roomData.isActive,
             createdAt: roomData.createdAt,

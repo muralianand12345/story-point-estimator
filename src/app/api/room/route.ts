@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { generateRoomCode } from '@/lib/utils';
 
 // Create a new room
 export async function POST(request: Request) {
@@ -14,6 +15,9 @@ export async function POST(request: Request) {
             );
         }
 
+        // Generate a unique room code
+        const roomCode = await generateRoomCode();
+
         // Create room and user in a transaction
         const result = await prisma.$transaction(async (tx) => {
             // Create user
@@ -27,6 +31,7 @@ export async function POST(request: Request) {
             const room = await tx.room.create({
                 data: {
                     name: roomName,
+                    roomCode,
                     hostId: user.id,
                     // Add the user to the room
                     users: {
@@ -39,6 +44,7 @@ export async function POST(request: Request) {
 
             return {
                 roomId: room.id,
+                roomCode: room.roomCode,
                 userId: user.id,
                 userName: user.name,
             };

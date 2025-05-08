@@ -13,6 +13,7 @@ datasource db {
 model Room {
   id        String     @id @default(uuid())
   name      String
+  roomCode  String     @unique @map("room_code")
   createdAt DateTime   @default(now()) @map("created_at")
   hostId    String     @map("host_id")
   isActive  Boolean    @default(true) @map("is_active")

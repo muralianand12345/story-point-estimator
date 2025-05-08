@@ -9,6 +9,7 @@ export interface User {
 export interface Room {
     id: string;
     name: string;
+    roomCode: string;
     hostId: string;
     isActive: boolean;
     createdAt: string;

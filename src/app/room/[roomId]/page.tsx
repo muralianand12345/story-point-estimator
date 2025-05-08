@@ -196,6 +196,7 @@ const RoomPage: React.FC = () => {
         <Container maxWidth="lg" sx={{ py: 4 }}>
             <RoomHeader
                 roomName={room.name}
+                roomCode={room.roomCode}
                 inviteLink={inviteLink}
                 onLeaveRoom={handleLeaveRoom}
             />
