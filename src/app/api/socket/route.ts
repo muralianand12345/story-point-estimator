@@ -1,32 +1,7 @@
 import { NextRequest } from 'next/server';
-import { WebSocketServer } from 'ws';
-import { MessageType } from '@/lib/types';
-import prisma from '@/lib/db';
-
-// Map to store WebSocket connections
-const connections = new Map();
-
-// Map to store clients by room
-const roomClients = new Map();
-
-let wss: WebSocketServer | null = null;
-
-// Initialize WebSocket server
-const initializeWSS = () => {
-    if (wss) return wss;
-
-    // Use the WebSocket server from socketServer.ts
-    const { startWebSocketServer } = require('@/lib/socketServer');
-    wss = startWebSocketServer();
-
-    return wss;
-};
 
 export async function GET(req: NextRequest) {
-    // Initialize WebSocket server
-    initializeWSS();
-
-    // Return a response to let the client know the WebSocket server is running
+    // This is just a health check endpoint for the WebSocket
     return new Response('WebSocket server is running', {
         status: 200,
         headers: {

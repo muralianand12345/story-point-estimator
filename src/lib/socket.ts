@@ -9,10 +9,11 @@ export class SocketClient {
 
     constructor(private url: string = '') {
         if (typeof window !== 'undefined' && !this.url) {
-            // Default WebSocket URL based on current host
+            // Use the same port as the main application
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const host = window.location.host;
-            this.url = `${protocol}//${host}/api/socket`;
+            // Connect directly to the WebSocket endpoint, not the API route
+            this.url = `${protocol}//${host}/ws`;
         }
     }
 

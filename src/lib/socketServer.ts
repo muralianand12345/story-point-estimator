@@ -8,22 +8,34 @@ const roomClients = new Map<string, Map<string, WebSocket>>();
 // Map to store user information by connection
 const connections = new Map<WebSocket, { userId: string; roomId: string }>();
 
+// WebSocketServer instance
+let wss: WebSocketServer | null = null;
+
 // Start WebSocket server
-export const startWebSocketServer = () => {
+export const startWebSocketServer = (server?: any) => {
     // Only start the WebSocket server in a server context
-    if (typeof window !== 'undefined') return;
+    if (typeof window !== 'undefined') return null;
 
-    const PORT = process.env.WEBSOCKET_PORT || 3001;
-    const wss = new WebSocketServer({ port: Number(PORT) });
+    // If server already exists, return it
+    if (wss) return wss;
 
-    console.log(`WebSocket server started on port ${PORT}`);
+    if (server) {
+        // Create WebSocketServer using the HTTP server instance with noServer mode
+        wss = new WebSocketServer({ noServer: true });
+        console.log(`WebSocket server initialized in noServer mode`);
+    } else {
+        // Standalone WebSocketServer (fallback)
+        const PORT = process.env.WEBSOCKET_PORT || 3001;
+        wss = new WebSocketServer({ port: Number(PORT) });
+        console.log(`Standalone WebSocket server started on port ${PORT}`);
+    }
 
     wss.on('connection', (ws: WebSocket) => {
         console.log('New client connected');
 
         ws.on('message', async (message: string) => {
             try {
-                const data: WebSocketMessage = JSON.parse(message);
+                const data: WebSocketMessage = JSON.parse(message.toString());
                 console.log(`Received message: ${data.type}`);
 
                 switch (data.type) {
@@ -67,6 +79,13 @@ export const startWebSocketServer = () => {
     });
 
     return wss;
+};
+
+// Handle upgrade for integrating with HTTP server
+export const handleUpgrade = (request: any, socket: any, head: any, callback: any) => {
+    if (!wss) return false;
+    wss.handleUpgrade(request, socket, head, callback);
+    return true;
 };
 
 // Handle JOIN_ROOM message
@@ -388,7 +407,5 @@ const broadcastToRoom = (roomId: string, message: WebSocketMessage) => {
     });
 };
 
-// Initialize the WebSocket server when this module is imported
-if (typeof window === 'undefined') {
-    startWebSocketServer();
-}
+// Export the WSS instance getter
+export const getWSS = () => wss;
