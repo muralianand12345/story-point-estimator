@@ -1,48 +1,35 @@
 import { createServer } from 'http';
+import { NextApiRequest, NextApiResponse } from 'next';
 import { parse } from 'url';
 import next from 'next';
-import path from 'path';
+import { setupSocketServer } from './src/app/api/socket/route';
 
 const dev = process.env.NODE_ENV !== 'production';
-const app = next({ dev });
+const hostname = 'localhost';
+const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+
+// Create the Next.js app
+const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
-app.prepare().then(async () => {
-    // Dynamically import the websocketHandler to avoid module resolution issues
-    const { initWebSocketServer } = await import('./src/lib/websocketHandler');
-
-    const server = createServer((req, res) => {
-        if (!req.url) {
-            res.statusCode = 400;
-            res.end('Bad Request');
-            return;
-        }
-        const parsedUrl = parse(req.url, true);
-        handle(req, res, parsedUrl);
-    });
-
-    // Initialize WebSocket server
-    initWebSocketServer(server);
-
-    // Add WebSocket upgrade handler
-    server.on('upgrade', (request, socket, head) => {
-        const pathname = request.url ? parse(request.url).pathname : null;
-
-        if (pathname === '/ws') {
-            const wss = initWebSocketServer(server);
-            wss?.handleUpgrade(request, socket, head, (ws) => {
-                wss.emit('connection', ws, request);
-            });
-        } else {
-            socket.destroy();
+app.prepare().then(() => {
+    const server = createServer(async (req, res) => {
+        try {
+            // Be sure to pass `true` as the second argument to `url.parse`.
+            // This tells it to parse the query portion of the URL.
+            const parsedUrl = parse(req.url!, true);
+            await handle(req, res, parsedUrl);
+        } catch (err) {
+            console.error('Error occurred handling', req.url, err);
+            res.statusCode = 500;
+            res.end('Internal Server Error');
         }
     });
 
-    const port = process.env.PORT || 3000;
+    // Set up Socket.io
+    setupSocketServer(server);
+
     server.listen(port, () => {
-        console.log(`> Ready on http://localhost:${port}`);
+        console.log(`> Ready on http://${hostname}:${port}`);
     });
-}).catch(err => {
-    console.error('Error starting server:', err);
-    process.exit(1);
 });

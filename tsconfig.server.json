@@ -1,12 +1,21 @@
 {
     "extends": "./tsconfig.json",
     "compilerOptions": {
-        "module": "CommonJS",
-        "moduleResolution": "node",
+        "module": "commonjs",
         "outDir": "dist",
-        "noEmit": false
+        "target": "es2017",
+        "isolatedModules": false,
+        "noEmit": false,
+        "baseUrl": ".",
+        "paths": {
+            "@/*": [
+                "./src/*"
+            ]
+        }
     },
     "include": [
-        "server.ts"
+        "server.ts",
+        "src/**/*.ts",
+        "src/**/*.tsx"
     ]
 }

@@ -1,17 +1,10 @@
-import { PrismaClient } from '@prisma/client';
+// This file is deprecated - use prisma.ts instead
+// keeping the file to avoid import errors until all references are updated
+import prisma from './prisma';
 
-// PrismaClient is attached to the `global` object in development to prevent
-// exhausting your database connection limit.
-// Learn more: https://pris.ly/d/help/next-prisma-client-js
-
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
-
-export const prisma =
-    globalForPrisma.prisma ||
-    new PrismaClient({
-        log: ['query'],
-    });
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
-
-export default prisma;
+export const db = {
+    query: () => {
+        console.warn('db.query is deprecated - use prisma directly');
+        return Promise.resolve({ rows: [] });
+    },
+};

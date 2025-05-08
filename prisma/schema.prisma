@@ -10,62 +10,35 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
+model Room {
   id        String     @id @default(uuid())
   name      String
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  rooms     RoomUser[]
-  votes     Vote[]
+  createdAt DateTime   @default(now()) @map("created_at")
+  hostId    String     @map("host_id")
+  isActive  Boolean    @default(true) @map("is_active")
+  host      User       @relation("RoomHost", fields: [hostId], references: [id])
+  users     RoomUser[]
+
+  @@map("rooms")
 }
 
-model Room {
+model User {
   id          String     @id @default(uuid())
   name        String
-  roomCode    String     @unique
-  createdById String
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  isActive    Boolean    @default(true)
-  users       RoomUser[]
-  stories     Story[]
+  createdAt   DateTime   @default(now()) @map("created_at")
+  rooms       RoomUser[]
+  hostedRooms Room[]     @relation("RoomHost")
+
+  @@map("users")
 }
 
 model RoomUser {
-  id        String   @id @default(uuid())
-  userId    String
-  roomId    String
-  isAdmin   Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id])
-  room      Room     @relation(fields: [roomId], references: [id])
+  roomId   String   @map("room_id")
+  userId   String   @map("user_id")
+  joinedAt DateTime @default(now()) @map("joined_at")
+  room     Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, roomId])
-}
-
-model Story {
-  id          String   @id @default(uuid())
-  title       String
-  description String?
-  roomId      String
-  isActive    Boolean  @default(true)
-  isRevealed  Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  room        Room     @relation(fields: [roomId], references: [id])
-  votes       Vote[]
-}
-
-model Vote {
-  id        String   @id @default(uuid())
-  userId    String
-  storyId   String
-  value     String // The story point estimate (e.g., "1", "2", "3", "5", "8", "13")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id])
-  story     Story    @relation(fields: [storyId], references: [id])
-
-  @@unique([userId, storyId])
+  @@id([roomId, userId])
+  @@map("room_users")
 }

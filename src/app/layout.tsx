@@ -1,20 +1,24 @@
-import type React from "react"
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import { ThemeProvider } from "@/components/theme-provider"
+import type { Metadata } from 'next';
+import ThemeProvider from '@/components/ThemeProvider';
+import { Inter } from 'next/font/google';
+import './globals.css';
 
-const inter = Inter({ subsets: ["latin"] })
+// Configure the Inter font
+const inter = Inter({
+    subsets: ['latin'],
+    display: 'swap',
+});
 
 export const metadata: Metadata = {
-    title: "Story Point Estimator",
-    description: "Collaborative planning poker for agile teams",
-}
+    title: 'Story Point Estimator',
+    description: 'A collaborative tool for agile story point estimation',
+};
 
 export default function RootLayout({
     children,
-}: Readonly<{
-    children: React.ReactNode
-}>) {
+}: {
+    children: React.ReactNode;
+}) {
     return (
         <html lang="en">
             <body className={inter.className}>
@@ -23,5 +27,5 @@ export default function RootLayout({
                 </ThemeProvider>
             </body>
         </html>
-    )
+    );
 }
