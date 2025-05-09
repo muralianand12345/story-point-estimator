@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Box,
     Typography,
@@ -36,40 +36,47 @@ const VotingArea: React.FC<VotingAreaProps> = ({
     // Fibonacci-like sequence for story points
     const pointValues = [0, 0.5, 1, 2, 3, 5, 8, 13, 20, 40, 100, '?', 'Pass'];
 
+    // Create handler callbacks with useCallback to prevent recreation on each render
+    const handleVotesUpdated = useCallback((updatedVotes: Record<string, Vote>) => {
+        setVotes(updatedVotes);
+    }, []);
+
+    const handleVoteRevealed = useCallback((revealed: boolean) => {
+        setIsRevealed(revealed);
+    }, []);
+
+    const handleVotesReset = useCallback(() => {
+        setSelectedValue(null);
+        setVotes({});
+        setIsRevealed(false);
+        setIsSubmitting(false);
+    }, []);
+
+    const handleIssueUpdated = useCallback((issue: string) => {
+        setCurrentIssue(issue);
+    }, []);
+
     // Set up socket event listeners
     useEffect(() => {
-        // Listen for vote updates
-        socketService.on(SocketEvent.VOTES_UPDATED, (updatedVotes: Record<string, Vote>) => {
-            setVotes(updatedVotes);
-        });
+        socketService.on(SocketEvent.VOTES_UPDATED, handleVotesUpdated);
+        socketService.on(SocketEvent.REVEAL_VOTES, handleVoteRevealed);
+        socketService.on(SocketEvent.RESET_VOTES, handleVotesReset);
+        socketService.on(SocketEvent.ISSUE_UPDATED, handleIssueUpdated);
 
-        // Listen for vote reveal
-        socketService.on(SocketEvent.REVEAL_VOTES, (revealed: boolean) => {
-            setIsRevealed(revealed);
-        });
+        // Request current state if not yet received
+        if (Object.keys(votes).length === 0 && !currentIssue) {
+            console.log("Requesting initial state...");
+            // We could implement a "get_state" event if needed
+        }
 
-        // Listen for vote reset
-        socketService.on(SocketEvent.RESET_VOTES, () => {
-            // Important: clear ALL states
-            setSelectedValue(null);
-            setVotes({});
-            setIsRevealed(false);
-            setIsSubmitting(false);
-        });
-
-        // Listen for issue updates
-        socketService.on(SocketEvent.ISSUE_UPDATED, (issue: string) => {
-            setCurrentIssue(issue);
-        });
-
+        // Cleanup on unmount
         return () => {
-            // Clean up event listeners
-            socketService.off(SocketEvent.VOTES_UPDATED, setVotes);
-            socketService.off(SocketEvent.REVEAL_VOTES, setIsRevealed);
-            socketService.off(SocketEvent.RESET_VOTES, () => { });
-            socketService.off(SocketEvent.ISSUE_UPDATED, setCurrentIssue);
+            socketService.off(SocketEvent.VOTES_UPDATED, handleVotesUpdated);
+            socketService.off(SocketEvent.REVEAL_VOTES, handleVoteRevealed);
+            socketService.off(SocketEvent.RESET_VOTES, handleVotesReset);
+            socketService.off(SocketEvent.ISSUE_UPDATED, handleIssueUpdated);
         };
-    }, []);
+    }, [handleVotesUpdated, handleVoteRevealed, handleVotesReset, handleIssueUpdated, votes, currentIssue]);
 
     // Simplified vote handler
     const handleVote = (value: number | string) => {
