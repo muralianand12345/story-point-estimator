@@ -16,6 +16,7 @@ import { Socket } from 'socket.io-client';
 import RoomHeader from '@/components/room/RoomHeader';
 import UserList from '@/components/room/UserList';
 import socketService from '@/lib/socketService';
+import VotingArea from '@/components/room/VotingArea';
 import { Room, User, SocketEvent } from '@/types';
 
 const RoomPage: React.FC = () => {
@@ -211,6 +212,11 @@ const RoomPage: React.FC = () => {
             <Grid container spacing={3}>
                 {/* Main estimation area */}
                 <Grid item xs={12} md={8}>
+                    <VotingArea
+                        users={users}
+                        currentUserId={userId}
+                        isHost={userId === room.hostId}
+                    />
                     <Box sx={{
                         height: isMobile ? '300px' : '600px',
                         bgcolor: 'background.paper',

@@ -1,4 +1,13 @@
-// Type definitions for the application
+export interface Vote {
+    userId: string;
+    value: number | null;
+}
+
+export interface VotingState {
+    isRevealed: boolean;
+    votes: Record<string, Vote>;
+    currentIssue: string;
+}
 
 export interface User {
     id: string;
@@ -35,5 +44,10 @@ export enum SocketEvent {
     HOST_CHANGED = 'host-changed',
     KICKED = 'kicked',
     KICK_USER = 'kick-user',
-    LEAVE_ROOM = 'leave-room'
+    LEAVE_ROOM = 'leave-room',
+    SUBMIT_VOTE = 'submit-vote',
+    REVEAL_VOTES = 'reveal-votes',
+    RESET_VOTES = 'reset-votes',
+    VOTES_UPDATED = 'votes-updated',
+    ISSUE_UPDATED = 'issue-updated'
 }

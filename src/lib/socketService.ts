@@ -61,6 +61,22 @@ export class SocketService {
         this.socket?.emit(SocketEvent.LEAVE_ROOM);
         this.disconnect();
     }
+
+    public submitVote(value: number | null): void {
+        this.socket?.emit(SocketEvent.SUBMIT_VOTE, value);
+    }
+
+    public revealVotes(reveal: boolean): void {
+        this.socket?.emit(SocketEvent.REVEAL_VOTES, reveal);
+    }
+
+    public resetVotes(): void {
+        this.socket?.emit(SocketEvent.RESET_VOTES);
+    }
+
+    public updateIssue(issue: string): void {
+        this.socket?.emit(SocketEvent.ISSUE_UPDATED, issue);
+    }
 }
 
 export default SocketService.getInstance();
