@@ -6,10 +6,7 @@ import {
     Paper,
     Divider,
     TextField,
-    Grid,
-    Chip,
-    CircularProgress,
-    Tooltip
+    Chip
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
@@ -29,7 +26,7 @@ const VotingArea: React.FC<VotingAreaProps> = ({
     currentUserId,
     isHost
 }) => {
-    const [selectedValue, setSelectedValue] = useState<number | null>(null);
+    const [selectedValue, setSelectedValue] = useState<number | string | null>(null);
     const [votes, setVotes] = useState<Record<string, Vote>>({});
     const [isRevealed, setIsRevealed] = useState<boolean>(false);
     const [currentIssue, setCurrentIssue] = useState<string>('');
@@ -56,9 +53,11 @@ const VotingArea: React.FC<VotingAreaProps> = ({
 
         // Listen for vote reset
         socket.on(SocketEvent.RESET_VOTES, () => {
+            // Important: clear ALL states
             setSelectedValue(null);
             setVotes({});
             setIsRevealed(false);
+            setIsSubmitting(false);
         });
 
         // Listen for issue updates
@@ -67,29 +66,44 @@ const VotingArea: React.FC<VotingAreaProps> = ({
         });
 
         return () => {
-            socket.off(SocketEvent.VOTES_UPDATED);
-            socket.off(SocketEvent.REVEAL_VOTES);
-            socket.off(SocketEvent.RESET_VOTES);
-            socket.off(SocketEvent.ISSUE_UPDATED);
+            // Clean up event listeners
+            if (socket) {
+                socket.off(SocketEvent.VOTES_UPDATED);
+                socket.off(SocketEvent.REVEAL_VOTES);
+                socket.off(SocketEvent.RESET_VOTES);
+                socket.off(SocketEvent.ISSUE_UPDATED);
+            }
         };
     }, []);
 
-    // Submit vote
+    // Simplified vote handler
     const handleVote = (value: number | string) => {
-        // Convert string values to appropriate types
-        let numericValue: number | null = null;
-        if (value !== '?' && value !== 'Pass') {
-            numericValue = Number(value);
-        }
+        // Don't allow voting if votes are revealed or already submitting
+        if (isRevealed || isSubmitting) return;
 
-        setSelectedValue(numericValue);
+        // Mark as submitting to prevent double-votes
         setIsSubmitting(true);
 
+        // Update UI immediately for better responsiveness
+        setSelectedValue(value);
+
+        // Process value for server
+        let serverValue: number | null = null;
+        if (value !== '?' && value !== 'Pass') {
+            serverValue = Number(value);
+        }
+
+        // Get socket
         const socket = socketService.getSocket();
         if (socket) {
-            socket.emit(SocketEvent.SUBMIT_VOTE, numericValue, () => {
-                setIsSubmitting(false);
-            });
+            // Emit vote to server
+            socket.emit(SocketEvent.SUBMIT_VOTE, serverValue);
+
+            // Reset submitting state after a short delay
+            setTimeout(() => setIsSubmitting(false), 300);
+        } else {
+            // If no socket, just reset submitting state
+            setIsSubmitting(false);
         }
     };
 
@@ -106,7 +120,6 @@ const VotingArea: React.FC<VotingAreaProps> = ({
         const socket = socketService.getSocket();
         if (socket && isHost) {
             socket.emit(SocketEvent.RESET_VOTES);
-            setIssueInput('');
         }
     };
 
@@ -119,10 +132,11 @@ const VotingArea: React.FC<VotingAreaProps> = ({
         }
     };
 
-    // Calculate how many users have voted
+    // Count votes and check user status
     const votedCount = Object.keys(votes).length;
     const totalUsers = users.length;
-    const hasUserVoted = selectedValue !== null;
+    const userVote = votes[currentUserId];
+    const hasUserVoted = !!userVote;
 
     return (
         <Paper sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -207,7 +221,9 @@ const VotingArea: React.FC<VotingAreaProps> = ({
                 <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                     <Box sx={{ mb: 2 }}>
                         <Typography variant="subtitle1" gutterBottom>
-                            Your vote: {hasUserVoted ? (selectedValue === null ? 'Passed' : selectedValue) : 'Not submitted'}
+                            Your vote: {hasUserVoted
+                                ? (userVote.value === null ? 'Pass' : userVote.value)
+                                : 'Not submitted'}
                         </Typography>
                     </Box>
 
@@ -218,17 +234,23 @@ const VotingArea: React.FC<VotingAreaProps> = ({
                         alignItems: 'center',
                         p: 2
                     }}>
-                        {pointValues.map((value) => (
-                            <VotingCard
-                                key={value}
-                                value={value}
-                                selected={value === selectedValue ||
-                                    (value === '?' && selectedValue === null && hasUserVoted)}
-                                onSelect={() => handleVote(value)}
-                                revealed={isRevealed}
-                                disabled={isSubmitting}
-                            />
-                        ))}
+                        {pointValues.map((value) => {
+                            // Select card if it matches the user's vote or the currently selected value
+                            const isSelected = hasUserVoted
+                                ? (userVote.value === null && value === 'Pass') || userVote.value === value
+                                : selectedValue === value;
+
+                            return (
+                                <VotingCard
+                                    key={value}
+                                    value={value}
+                                    selected={isSelected}
+                                    onSelect={() => handleVote(value)}
+                                    revealed={isRevealed}
+                                    disabled={isSubmitting}
+                                />
+                            );
+                        })}
                     </Box>
                 </Box>
             )}

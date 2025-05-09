@@ -16,21 +16,24 @@ const VotingCard: React.FC<VotingCardProps> = ({
     revealed,
     disabled
 }) => {
-    // Handle card click
+    // Handle card click with logging
     const handleClick = () => {
+        console.log(`Card clicked: ${value}, disabled: ${disabled}`);
         if (!disabled) {
+            console.log(`Selecting value: ${value}`);
             onSelect();
         }
     };
 
     // Determine the color based on the card value
     const getCardColor = () => {
+        // Use red for face cards, black for numbers
         if (value === '?' || value === 'Pass') {
-            return '#6A5ACD';
+            return '#6A5ACD'; // SlateBlue for special cards
         } else if ([0, 0.5, 1, 2, 3, 5, 8, 13, 20, 40, 100].includes(Number(value))) {
-            return '#000000';
+            return '#000000'; // Black for number cards
         } else {
-            return '#B22222';
+            return '#B22222'; // FireBrick red for other values
         }
     };
 
@@ -62,6 +65,7 @@ const VotingCard: React.FC<VotingCardProps> = ({
             }}
             onClick={handleClick}
         >
+            {/* Top left value */}
             <Typography
                 variant="h6"
                 sx={{
@@ -73,6 +77,7 @@ const VotingCard: React.FC<VotingCardProps> = ({
                 {value}
             </Typography>
 
+            {/* Center value (larger) */}
             <Typography
                 variant="h4"
                 sx={{
@@ -84,6 +89,7 @@ const VotingCard: React.FC<VotingCardProps> = ({
                 {value}
             </Typography>
 
+            {/* Bottom right value (upside down) */}
             <Typography
                 variant="h6"
                 sx={{
@@ -96,6 +102,7 @@ const VotingCard: React.FC<VotingCardProps> = ({
                 {value}
             </Typography>
 
+            {/* Highlight for selected card */}
             {selected && (
                 <Box
                     sx={{
@@ -111,6 +118,7 @@ const VotingCard: React.FC<VotingCardProps> = ({
                 />
             )}
 
+            {/* Reflection effect for playing card feel */}
             <Box
                 sx={{
                     position: 'absolute',

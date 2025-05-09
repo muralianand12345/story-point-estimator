@@ -19,6 +19,7 @@ export class SocketService {
     // Connect to the Socket.io server
     public connect(roomId: string, userId: string): Socket {
         if (!this.socket) {
+            console.log(`Connecting socket for room ${roomId}, user ${userId}`);
             this.socket = io({
                 path: '/api/socketio',
                 query: {
@@ -27,7 +28,19 @@ export class SocketService {
                 },
             });
 
-            console.log('Socket connected');
+            this.socket.on('connect', () => {
+                console.log('Socket connected successfully');
+            });
+
+            this.socket.on('connect_error', (err) => {
+                console.error('Socket connection error:', err);
+            });
+
+            this.socket.on('error', (err) => {
+                console.error('Socket error:', err);
+            });
+        } else {
+            console.log('Socket already connected');
         }
         return this.socket;
     }
@@ -63,7 +76,13 @@ export class SocketService {
     }
 
     public submitVote(value: number | null): void {
-        this.socket?.emit(SocketEvent.SUBMIT_VOTE, value);
+        console.log(`Submitting vote: ${value}`);
+        if (this.socket) {
+            this.socket.emit(SocketEvent.SUBMIT_VOTE, value);
+            console.log('Vote submitted successfully');
+        } else {
+            console.error('Socket not connected, cannot submit vote');
+        }
     }
 
     public revealVotes(reveal: boolean): void {

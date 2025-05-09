@@ -217,20 +217,6 @@ const RoomPage: React.FC = () => {
                         currentUserId={userId}
                         isHost={userId === room.hostId}
                     />
-                    <Box sx={{
-                        height: isMobile ? '300px' : '600px',
-                        bgcolor: 'background.paper',
-                        p: 3,
-                        borderRadius: 1,
-                        boxShadow: 1
-                    }}>
-                        <Typography variant="h5" gutterBottom>
-                            Estimation Area
-                        </Typography>
-                        <Typography variant="body1">
-                            This area will contain the story point voting interface.
-                        </Typography>
-                    </Box>
                 </Grid>
 
                 {/* User list */}

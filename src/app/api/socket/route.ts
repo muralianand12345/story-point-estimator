@@ -65,18 +65,29 @@ export const setupSocketServer = (server: NetServer) => {
 
         // Handle submit vote
         socket.on(SocketEvent.SUBMIT_VOTE, (value) => {
-            const roomVotingState = votingStates[roomId];
+            console.log(`Received vote from user ${userId} in room ${roomId}: ${value}`);
 
-            if (roomVotingState && !roomVotingState.isRevealed) {
-                // Add or update vote
-                roomVotingState.votes[userId] = {
-                    userId,
-                    value
+            // Initialize voting state if it doesn't exist
+            if (!votingStates[roomId]) {
+                votingStates[roomId] = {
+                    isRevealed: false,
+                    votes: {},
+                    currentIssue: ''
                 };
-
-                // Broadcast updated votes to all users in the room
-                io.to(roomId).emit(SocketEvent.VOTES_UPDATED, roomVotingState.votes);
             }
+
+            // Don't allow voting if votes are revealed
+            if (votingStates[roomId].isRevealed) {
+                console.log('Votes are already revealed, ignoring vote');
+                return;
+            }
+
+            // Add or update the vote
+            votingStates[roomId].votes[userId] = { userId, value };
+
+            // Emit the updated votes to all clients in the room
+            console.log('Broadcasting updated votes to room');
+            io.to(roomId).emit(SocketEvent.VOTES_UPDATED, votingStates[roomId].votes);
         });
 
         // Handle reveal votes (host only)
@@ -247,8 +258,8 @@ export const setupSocketServer = (server: NetServer) => {
                     }
                 }
 
-                // Remove user from room
-                await prisma.roomUser.delete({
+                // Check if the RoomUser record exists before trying to delete it
+                const roomUser = await prisma.roomUser.findUnique({
                     where: {
                         roomId_userId: {
                             roomId: roomId,
@@ -257,8 +268,22 @@ export const setupSocketServer = (server: NetServer) => {
                     },
                 });
 
-                // Notify everyone that the user has left
-                socket.to(roomId).emit(SocketEvent.USER_LEFT, userId);
+                if (roomUser) {
+                    // Remove user from room only if the record exists
+                    await prisma.roomUser.delete({
+                        where: {
+                            roomId_userId: {
+                                roomId: roomId,
+                                userId: userId,
+                            },
+                        },
+                    });
+
+                    // Notify everyone that the user has left
+                    socket.to(roomId).emit(SocketEvent.USER_LEFT, userId);
+                } else {
+                    console.log(`RoomUser record not found for user ${userId} in room ${roomId}`);
+                }
             } catch (error) {
                 console.error('Error handling user disconnection:', error);
             }
