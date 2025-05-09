@@ -2,8 +2,7 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "darwin-arm64"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -12,31 +11,35 @@ datasource db {
 }
 
 model Room {
-  id            String        @id @default(cuid())
-  name          String
-  description   String?
-  isRevealed    Boolean       @default(false)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  votingOptions String[]      @default(["0", "1", "2", "3", "5", "8", "13", "21", "?"])
-  participants  Participant[]
+  id        String     @id @default(uuid())
+  name      String
+  roomCode  String     @unique @map("room_code")
+  createdAt DateTime   @default(now()) @map("created_at")
+  hostId    String     @map("host_id")
+  isActive  Boolean    @default(true) @map("is_active")
+  host      User       @relation("RoomHost", fields: [hostId], references: [id])
+  users     RoomUser[]
 
-  @@index([createdAt])
+  @@map("rooms")
 }
 
-model Participant {
-  id        String   @id @default(cuid())
-  name      String
-  isHost    Boolean  @default(false)
-  vote      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  lastActive DateTime @default(now())
-  isActive  Boolean  @default(true)
-  roomId    String
-  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+model User {
+  id          String     @id @default(uuid())
+  name        String
+  createdAt   DateTime   @default(now()) @map("created_at")
+  rooms       RoomUser[]
+  hostedRooms Room[]     @relation("RoomHost")
 
-  @@index([roomId])
-  @@index([lastActive])
-  @@index([isActive])
+  @@map("users")
+}
+
+model RoomUser {
+  roomId   String   @map("room_id")
+  userId   String   @map("user_id")
+  joinedAt DateTime @default(now()) @map("joined_at")
+  room     Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, userId])
+  @@map("room_users")
 }

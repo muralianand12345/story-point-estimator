@@ -1,42 +1,31 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import { RoomProvider } from "../context/RoomContext";
-import ThemeProvider from "../context/ThemeContext";
-import { Analytics } from "@vercel/analytics/react"
+'use client';
 
-const geistSans = Geist({
-    variable: "--font-geist-sans",
-    subsets: ["latin"],
+import { Inter } from 'next/font/google';
+import ThemeProvider from '@/components/ThemeProvider';
+import './globals.css';
+
+// Configure the Inter font
+const inter = Inter({
+    subsets: ['latin'],
+    display: 'swap',
 });
 
-const geistMono = Geist_Mono({
-    variable: "--font-geist-mono",
-    subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-    title: "Story Point Estimator",
-    description: "Collaborative story point estimation for agile teams",
-};
-
-const RootLayout = async ({
+export default function RootLayout({
     children,
-}: Readonly<{
+}: {
     children: React.ReactNode;
-}>) => {
+}) {
     return (
-        <html lang="en" suppressHydrationWarning>
-            <Analytics/>
-            <body
-                className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen transition-colors`}
-            >
+        <html lang="en">
+            <head>
+                <title>Story Point Estimator</title>
+                <meta name="description" content="A collaborative tool for agile story point estimation" />
+            </head>
+            <body className={inter.className}>
                 <ThemeProvider>
-                    <RoomProvider>{children}</RoomProvider>
+                    {children}
                 </ThemeProvider>
             </body>
         </html>
     );
 }
-
-export default RootLayout;

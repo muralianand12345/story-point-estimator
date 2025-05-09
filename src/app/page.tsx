@@ -1,200 +1,249 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Header from '../components/Header';
-import Card from '../components/Card';
-import Input from '../components/Input';
-import { useRoom } from '../context/RoomContext';
-import Logo from '../components/Logo';
-import Button from '../components/Button';
+import {
+    Container,
+    Box,
+    Typography,
+    TextField,
+    Button,
+    Paper,
+    CircularProgress,
+    Alert,
+    Tab,
+    Tabs,
+    AppBar,
+    Divider,
+    useTheme
+} from '@mui/material';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 
-const Home = () => {
-	const router = useRouter();
-	const { createRoom, joinRoom, checkRoomExists } = useRoom();
-	const [isClient, setIsClient] = useState(false);
+const HomePage: React.FC = () => {
+    const [activeTab, setActiveTab] = useState<number>(0);
+    const [roomName, setRoomName] = useState<string>('');
+    const [hostName, setHostName] = useState<string>('');
+    const [joinName, setJoinName] = useState<string>('');
+    const [roomCode, setRoomCode] = useState<string>('');
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string>('');
+    const router = useRouter();
+    const theme = useTheme();
 
-	const [roomId, setRoomId] = useState('');
-	const [name, setName] = useState('');
-	const [joinError, setJoinError] = useState('');
+    const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+        setActiveTab(newValue);
+        setError('');
+    };
 
-	const [roomName, setRoomName] = useState('');
-	const [roomDescription, setRoomDescription] = useState('');
-	const [hostName, setHostName] = useState('');
-	const [isSubmitting, setIsSubmitting] = useState(false);
+    const handleCreateRoom = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError('');
 
-	// Set client-side flag after hydration
-	useEffect(() => {
-		setIsClient(true);
-	}, []);
+        try {
+            const response = await fetch('/api/room', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ roomName, hostName }),
+            });
 
-	const handleJoinRoom = async (e: React.FormEvent) => {
-		e.preventDefault();
-		setJoinError('');
-		setIsSubmitting(true);
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Failed to create room');
+            }
 
-		try {
-			if (!name.trim()) {
-				setJoinError('Please enter your name');
-				return;
-			}
+            const data = await response.json();
 
-			// Format the room ID: trim whitespace and convert to uppercase
-			const formattedRoomId = roomId.trim().toUpperCase();
+            // Store user data in localStorage
+            localStorage.setItem('userId', data.userId);
+            localStorage.setItem('userName', data.userName);
 
-			if (!formattedRoomId) {
-				setJoinError('Please enter a room code');
-				return;
-			}
+            // Redirect to room page
+            router.push(`/room/${data.roomId}`);
+        } catch (error) {
+            console.error('Error creating room:', error);
+            setError(error instanceof Error ? error.message : 'Failed to create room');
+            setIsLoading(false);
+        }
+    };
 
-			// Check if room exists
-			const roomExists = await checkRoomExists(formattedRoomId);
-			if (!roomExists) {
-				setJoinError('Room not found. Please check the room code');
-				return;
-			}
+    const handleJoinByCode = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError('');
 
-			// Join the room
-			const success = await joinRoom(formattedRoomId, name.trim());
-			if (success) {
-				router.push(`/room/${formattedRoomId}`);
-			} else {
-				setJoinError('Failed to join room. Please try again.');
-			}
-		} catch (error) {
-			console.error('Error joining room:', error);
-			setJoinError('An error occurred. Please try again.');
-		} finally {
-			setIsSubmitting(false);
-		}
-	};
+        try {
+            // First find room by code
+            const findResponse = await fetch(`/api/room/code/${roomCode}`);
 
-	const handleCreateRoom = async (e: React.FormEvent) => {
-		e.preventDefault();
-		setIsSubmitting(true);
+            if (!findResponse.ok) {
+                throw new Error('Invalid room code. Please check and try again.');
+            }
 
-		try {
-			const trimmedRoomName = roomName.trim();
-			const trimmedHostName = hostName.trim();
+            const findData = await findResponse.json();
+            const roomId = findData.roomId;
 
-			if (!trimmedRoomName || !trimmedHostName) {
-				return;
-			}
+            // Then join the room
+            const joinResponse = await fetch(`/api/room/${roomId}/join`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ userName: joinName }),
+            });
 
-			const newRoomId = await createRoom(
-				trimmedRoomName,
-				roomDescription.trim(),
-				trimmedHostName,
-			);
+            if (!joinResponse.ok) {
+                const data = await joinResponse.json();
+                throw new Error(data.error || 'Failed to join room');
+            }
 
-			if (newRoomId) {
-				router.push(`/room/${newRoomId}`);
-			}
-		} catch (error) {
-			console.error('Error creating room:', error);
-		} finally {
-			setIsSubmitting(false);
-		}
-	};
+            const joinData = await joinResponse.json();
 
-	return (
-		<div className="min-h-screen transition-colors">
-			<Header />
-			<main className="max-w-4xl mx-auto px-4 py-12">
-				<div className="text-center mb-12">
-					<div className="flex justify-center mb-4">
-						<Logo size="lg" showText={false} />
-					</div>
-					<h1 className="text-4xl font-bold mb-4 text-primary-700 dark:text-primary-400">
-						Story Point Estimator
-					</h1>
-					<p className="text-lg text-gray-600 dark:text-gray-400">
-						Simple, real-time story point estimation for agile teams
-					</p>
-				</div>
+            // Store user data in localStorage
+            localStorage.setItem('userId', joinData.userId);
+            localStorage.setItem('userName', joinData.userName);
 
-				<div className="grid md:grid-cols-2 gap-8">
-					{/* Join Room */}
-					<Card>
-						<h2 className="text-2xl font-bold mb-6 text-primary-600 dark:text-primary-500">
-							Join a Room
-						</h2>
-						<form onSubmit={handleJoinRoom}>
-							<Input
-								id="join-room-id"
-								label="Room Code"
-								placeholder="Enter room code"
-								value={roomId}
-								onChange={(e) => setRoomId(e.target.value)}
-								required
-							/>
-							<Input
-								id="join-name"
-								label="Your Name"
-								placeholder="Enter your name"
-								value={name}
-								onChange={(e) => setName(e.target.value)}
-								required
-							/>
-							{joinError && (
-								<p className="text-red-500 dark:text-red-400 text-sm mb-4">{joinError}</p>
-							)}
-							<Button
-								type="submit"
-								disabled={isSubmitting}
-								variant="primary"
-								fullWidth
-								className="mt-2"
-							>
-								{isSubmitting ? 'Joining...' : 'Join Room'}
-							</Button>
-						</form>
-					</Card>
+            // Redirect to room page
+            router.push(`/room/${roomId}`);
+        } catch (error) {
+            console.error('Error joining room:', error);
+            setError(error instanceof Error ? error.message : 'Failed to join room');
+            setIsLoading(false);
+        }
+    };
 
-					{/* Create Room */}
-					<Card>
-						<h2 className="text-2xl font-bold mb-6 text-primary-600 dark:text-primary-500">
-							Create a Room
-						</h2>
-						<form onSubmit={handleCreateRoom}>
-							<Input
-								id="create-name"
-								label="Your Name"
-								placeholder="Enter your name"
-								value={hostName}
-								onChange={(e) => setHostName(e.target.value)}
-								required
-							/>
-							<Input
-								id="room-name"
-								label="Room Name"
-								placeholder="Enter room name"
-								value={roomName}
-								onChange={(e) => setRoomName(e.target.value)}
-								required
-							/>
-							<Input
-								id="room-description"
-								label="Description (Optional)"
-								placeholder="Enter room description"
-								value={roomDescription}
-								onChange={(e) => setRoomDescription(e.target.value)}
-							/>
-							<Button
-								type="submit"
-								disabled={isSubmitting}
-								variant="primary"
-								fullWidth
-								className="mt-2"
-							>
-								{isSubmitting ? 'Creating...' : 'Create Room'}
-							</Button>
-						</form>
-					</Card>
-				</div>
-			</main>
-		</div>
-	);
-}
+    return (
+        <Container
+            maxWidth="sm"
+            sx={{
+                minHeight: '100vh',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                backgroundColor: 'transparent'
+            }}
+        >
+            <Box sx={{ position: 'absolute', top: 16, right: 16 }}>
+                <ThemeToggle />
+            </Box>
 
-export default Home;
+            <Box sx={{ my: 8 }}>
+                <Paper
+                    elevation={3}
+                    sx={{
+                        p: 4,
+                        backgroundColor: theme.palette.background.paper
+                    }}
+                >
+                    <Typography variant="h4" component="h1" align="center" gutterBottom>
+                        Story Point Estimator
+                    </Typography>
+
+                    <Typography variant="body1" align="center" sx={{ mb: 4 }}>
+                        Create a room or join an existing one to start estimating with your team
+                    </Typography>
+
+                    {error && (
+                        <Alert severity="error" sx={{ mb: 3 }}>
+                            {error}
+                        </Alert>
+                    )}
+
+                    <AppBar position="static" color="default" elevation={0}>
+                        <Tabs
+                            value={activeTab}
+                            onChange={handleTabChange}
+                            indicatorColor="primary"
+                            textColor="primary"
+                            variant="fullWidth"
+                        >
+                            <Tab label="Create Room" />
+                            <Tab label="Join Room" />
+                        </Tabs>
+                    </AppBar>
+
+                    <Box sx={{ mt: 3 }}>
+                        {activeTab === 0 && (
+                            <Box component="form" onSubmit={handleCreateRoom}>
+                                <TextField
+                                    fullWidth
+                                    label="Your Name"
+                                    value={hostName}
+                                    onChange={(e) => setHostName(e.target.value)}
+                                    margin="normal"
+                                    required
+                                    autoFocus
+                                />
+
+                                <TextField
+                                    fullWidth
+                                    label="Room Name"
+                                    value={roomName}
+                                    onChange={(e) => setRoomName(e.target.value)}
+                                    margin="normal"
+                                    required
+                                />
+
+                                <Button
+                                    type="submit"
+                                    fullWidth
+                                    variant="contained"
+                                    color="primary"
+                                    size="large"
+                                    disabled={isLoading || !roomName || !hostName}
+                                    sx={{ mt: 3 }}
+                                >
+                                    {isLoading ? <CircularProgress size={24} /> : 'Create Room'}
+                                </Button>
+                            </Box>
+                        )}
+
+                        {activeTab === 1 && (
+                            <Box component="form" onSubmit={handleJoinByCode}>
+                                <TextField
+                                    fullWidth
+                                    label="Your Name"
+                                    value={joinName}
+                                    onChange={(e) => setJoinName(e.target.value)}
+                                    margin="normal"
+                                    required
+                                    autoFocus
+                                />
+
+                                <TextField
+                                    fullWidth
+                                    label="Room Code"
+                                    value={roomCode}
+                                    onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                                    margin="normal"
+                                    required
+                                    placeholder="Enter 6-digit code"
+                                    inputProps={{
+                                        maxLength: 6,
+                                        style: { textTransform: 'uppercase' }
+                                    }}
+                                />
+
+                                <Button
+                                    type="submit"
+                                    fullWidth
+                                    variant="contained"
+                                    color="primary"
+                                    size="large"
+                                    disabled={isLoading || !joinName || !roomCode || roomCode.length !== 6}
+                                    sx={{ mt: 3 }}
+                                >
+                                    {isLoading ? <CircularProgress size={24} /> : 'Join Room'}
+                                </Button>
+                            </Box>
+                        )}
+                    </Box>
+                </Paper>
+            </Box>
+        </Container>
+    );
+};
+
+export default HomePage;
