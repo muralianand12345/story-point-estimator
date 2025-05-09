@@ -12,7 +12,6 @@ import {
     useTheme,
     useMediaQuery
 } from '@mui/material';
-import { Socket } from 'socket.io-client';
 import RoomHeader from '@/components/room/RoomHeader';
 import UserList from '@/components/room/UserList';
 import socketService from '@/lib/socketService';
@@ -30,7 +29,7 @@ const RoomPage: React.FC = () => {
     const [room, setRoom] = useState<Room | null>(null);
     const [users, setUsers] = useState<User[]>([]);
     const [userId, setUserId] = useState<string>('');
-    const [socket, setSocket] = useState<Socket | null>(null);
+    const [socket, setSocket] = useState<WebSocket | null>(null);
 
     // Initialize user data from localStorage
     useEffect(() => {
@@ -85,7 +84,7 @@ const RoomPage: React.FC = () => {
         setSocket(socketInstance);
 
         // Socket event listeners
-        socketInstance.on(SocketEvent.USER_JOINED, async () => {
+        socketService.on(SocketEvent.USER_JOINED, async () => {
             try {
                 const response = await fetch(`/api/room/${roomId}`);
                 if (response.ok) {
@@ -97,7 +96,7 @@ const RoomPage: React.FC = () => {
             }
         });
 
-        socketInstance.on(SocketEvent.USER_LEFT, async (leftUserId: string) => {
+        socketService.on(SocketEvent.USER_LEFT, async (leftUserId: string) => {
             try {
                 const response = await fetch(`/api/room/${roomId}`);
                 if (response.ok) {
@@ -110,13 +109,13 @@ const RoomPage: React.FC = () => {
             }
         });
 
-        socketInstance.on(SocketEvent.HOST_CHANGED, (newHostId: string) => {
+        socketService.on(SocketEvent.HOST_CHANGED, (newHostId: string) => {
             if (room) {
                 setRoom({ ...room, hostId: newHostId });
             }
         });
 
-        socketInstance.on(SocketEvent.KICKED, () => {
+        socketService.on(SocketEvent.KICKED, () => {
             // Clear user data and redirect to home
             localStorage.removeItem('userId');
             localStorage.removeItem('userName');

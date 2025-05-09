@@ -3,9 +3,9 @@
     "version": "0.1.0",
     "private": true,
     "scripts": {
-        "dev": "ts-node --project tsconfig.server.json -r tsconfig-paths/register server.ts",
+        "dev": "next dev",
         "build": "prisma generate && next build",
-        "start": "NODE_ENV=production ts-node --project tsconfig.server.json -r tsconfig-paths/register server.ts",
+        "start": "next start",
         "lint": "next lint",
         "prisma:generate": "prisma generate",
         "prisma:migrate": "prisma migrate dev",
