@@ -13,8 +13,8 @@ export async function loadEnv() {
         }
 
         console.log("Environment variables loaded");
-    } catch (error: Error | any) {
-        console.warn("Failed to load .env file:", error.message);
+    } catch (error) {
+        console.warn("Failed to load .env file:", (error as Error).message);
     }
 }
 
