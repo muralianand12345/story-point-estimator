@@ -38,10 +38,10 @@ const VotingArea: React.FC<VotingAreaProps> = ({
 
     // Set up socket event listeners
     useEffect(() => {
-        if (!socketService.isConnected()) return;
+        if (!socketService.isConnected() || !currentUserId) return;
 
-        // Listen for vote updates
-        socketService.on(SocketEvent.VOTES_UPDATED, (updatedVotes: Record<string, Vote>) => {
+        // Define the event handlers
+        const handleVotesUpdated = (updatedVotes: Record<string, Vote>) => {
             console.log("Received updated votes:", updatedVotes);
             setVotes(updatedVotes);
 
@@ -50,38 +50,43 @@ const VotingArea: React.FC<VotingAreaProps> = ({
             if (userVote) {
                 if (userVote.value === null) {
                     setSelectedValue('Pass');
+                } else if (userVote.value === -1) {
+                    setSelectedValue('?');
                 } else {
                     setSelectedValue(userVote.value);
                 }
             }
-        });
+        };
 
-        // Listen for vote reveal
-        socketService.on(SocketEvent.REVEAL_VOTES, (revealed: boolean) => {
+        const handleVotesRevealed = (revealed: boolean) => {
             console.log("Votes revealed:", revealed);
             setIsRevealed(revealed);
-        });
+        };
 
-        // Listen for vote reset
-        socketService.on(SocketEvent.RESET_VOTES, () => {
+        const handleVotesReset = () => {
             console.log("Votes reset");
             setVotes({});
             setSelectedValue(null);
             setIsRevealed(false);
-        });
+        };
 
-        // Listen for issue updates
-        socketService.on(SocketEvent.ISSUE_UPDATED, (issue: string) => {
+        const handleIssueUpdated = (issue: string) => {
             console.log("Issue updated:", issue);
             setCurrentIssue(issue);
-        });
+        };
+
+        // Register event listeners
+        socketService.on(SocketEvent.VOTES_UPDATED, handleVotesUpdated);
+        socketService.on(SocketEvent.REVEAL_VOTES, handleVotesRevealed);
+        socketService.on(SocketEvent.RESET_VOTES, handleVotesReset);
+        socketService.on(SocketEvent.ISSUE_UPDATED, handleIssueUpdated);
 
         return () => {
             // Clean up all event listeners
-            socketService.off(SocketEvent.VOTES_UPDATED);
-            socketService.off(SocketEvent.REVEAL_VOTES);
-            socketService.off(SocketEvent.RESET_VOTES);
-            socketService.off(SocketEvent.ISSUE_UPDATED);
+            socketService.off(SocketEvent.VOTES_UPDATED, handleVotesUpdated);
+            socketService.off(SocketEvent.REVEAL_VOTES, handleVotesRevealed);
+            socketService.off(SocketEvent.RESET_VOTES, handleVotesReset);
+            socketService.off(SocketEvent.ISSUE_UPDATED, handleIssueUpdated);
         };
     }, [currentUserId]);
 
@@ -107,15 +112,7 @@ const VotingArea: React.FC<VotingAreaProps> = ({
             serverValue = Number(value);
         }
 
-        // Update the local votes state immediately for better UX
-        const updatedVotes = { ...votes };
-        updatedVotes[currentUserId] = {
-            userId: currentUserId,
-            value: serverValue
-        };
-        setVotes(updatedVotes);
-
-        // Use socketService method to send to server
+        // Submit the vote through socket service
         socketService.submitVote(serverValue);
 
         // Reset submitting state after a short delay

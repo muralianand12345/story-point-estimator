@@ -70,50 +70,63 @@ const RoomPage: React.FC = () => {
 
     // Initialize socket connection
     useEffect(() => {
-        if (!userId || !safeRoomId || !room) return;
+        if (!userId || !safeRoomId) return;
 
-        // Connect to socket
+        // Connect to socket only once we have userId and roomId
         const socketInstance = socketService.connect(safeRoomId, userId);
         setSocket(socketInstance);
 
-        // Socket event listeners
-        socketService.on(SocketEvent.USER_JOINED, async () => {
+        // Define the event handlers
+        const handleUserJoined = async () => {
             try {
                 const data = await apiService.getRoomData(safeRoomId);
+                setRoom(data.room);
                 setUsers(data.users);
             } catch (error) {
                 console.error('Error updating users after join:', error);
             }
-        });
+        };
 
-        socketService.on(SocketEvent.USER_LEFT, async (leftUserId: string) => {
+        const handleUserLeft = async (leftUserId: string) => {
             try {
-                const data = await apiService.getRoomData(roomId as string);
+                const data = await apiService.getRoomData(safeRoomId);
                 setRoom(data.room);
                 setUsers(data.users);
             } catch (error) {
                 console.error('Error updating users after leave:', error);
             }
-        });
+        };
 
-        socketService.on(SocketEvent.HOST_CHANGED, (newHostId: string) => {
-            if (room) {
-                setRoom({ ...room, hostId: newHostId });
-            }
-        });
+        const handleHostChanged = (newHostId: string) => {
+            setRoom(currentRoom => {
+                if (currentRoom) {
+                    return { ...currentRoom, hostId: newHostId };
+                }
+                return currentRoom;
+            });
+        };
 
-        socketService.on(SocketEvent.KICKED, () => {
-            // Clear user data and redirect to home
+        const handleKicked = () => {
             localStorage.removeItem('userId');
             localStorage.removeItem('userName');
             router.push('/');
-        });
+        };
+
+        // Register event listeners
+        socketService.on(SocketEvent.USER_JOINED, handleUserJoined);
+        socketService.on(SocketEvent.USER_LEFT, handleUserLeft);
+        socketService.on(SocketEvent.HOST_CHANGED, handleHostChanged);
+        socketService.on(SocketEvent.KICKED, handleKicked);
 
         // Cleanup on unmount
         return () => {
+            socketService.off(SocketEvent.USER_JOINED, handleUserJoined);
+            socketService.off(SocketEvent.USER_LEFT, handleUserLeft);
+            socketService.off(SocketEvent.HOST_CHANGED, handleHostChanged);
+            socketService.off(SocketEvent.KICKED, handleKicked);
             socketService.disconnect();
         };
-    }, [safeRoomId, userId, room]);
+    }, [safeRoomId, userId, router]);
 
     const handleKickUser = (kickUserId: string) => {
         if (userId === room?.hostId) {

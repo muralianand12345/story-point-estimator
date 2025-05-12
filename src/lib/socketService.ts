@@ -24,6 +24,13 @@ export class SocketService {
 
     // Connect to the WebSocket server
     public connect(roomId: string, userId: string): WebSocket {
+        // Check if we need to reconnect due to different room/user
+        if (this.socket && this.socket.readyState === WebSocket.OPEN &&
+            (this.roomId !== roomId || this.userId !== userId)) {
+            console.log('Reconnecting with new room/user parameters');
+            this.disconnect();
+        }
+
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
             this.roomId = roomId;
             this.userId = userId;
@@ -67,9 +74,17 @@ export class SocketService {
             const data = JSON.parse(event.data);
             const { event: eventName, payload } = data;
 
+            console.log(`Received event: ${eventName}`, payload);
+
             // Dispatch event to all registered listeners
             if (this.eventListeners.has(eventName)) {
-                this.eventListeners.get(eventName)?.forEach(callback => callback(payload));
+                this.eventListeners.get(eventName)?.forEach(callback => {
+                    try {
+                        callback(payload);
+                    } catch (error) {
+                        console.error(`Error in event listener for ${eventName}:`, error);
+                    }
+                });
             }
         } catch (error) {
             console.error('Error parsing WebSocket message:', error);
@@ -78,6 +93,9 @@ export class SocketService {
 
     private handleClose(event: CloseEvent) {
         console.log(`WebSocket closed: ${event.code} ${event.reason}`);
+
+        // Socket reference should be cleared
+        this.socket = null;
 
         // Attempt to reconnect if not closed intentionally
         if (event.code !== 1000) {
@@ -120,10 +138,13 @@ export class SocketService {
             this.eventListeners.set(event, []);
         }
 
-        this.eventListeners.get(event)?.push(callback);
+        const listeners = this.eventListeners.get(event);
+        // Only add if the callback isn't already registered
+        if (listeners && !listeners.includes(callback)) {
+            listeners.push(callback);
+        }
     }
 
-    // Remove an event listener
     public off(event: string, callback?: (data: any) => void): void {
         if (!callback) {
             // Remove all listeners for this event
@@ -150,9 +171,14 @@ export class SocketService {
     // Disconnect the WebSocket
     public disconnect(): void {
         if (this.socket) {
-            this.socket.close(1000, 'Client disconnected intentionally');
-            this.socket = null;
+            // Remove all event listeners before disconnecting
             this.eventListeners.clear();
+
+            if (this.socket.readyState === WebSocket.OPEN) {
+                this.socket.close(1000, 'Client disconnected intentionally');
+            }
+
+            this.socket = null;
             console.log('WebSocket disconnected');
         }
     }
