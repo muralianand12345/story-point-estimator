@@ -38,32 +38,21 @@ const VotingArea: React.FC<VotingAreaProps> = ({
 
     // Set up socket event listeners
     useEffect(() => {
-        // Don't get the raw socket - use the socketService methods directly
         if (!socketService.isConnected()) return;
 
         // Listen for vote updates using socketService.on()
         socketService.on(SocketEvent.VOTES_UPDATED, (updatedVotes: Record<string, Vote>) => {
+            console.log("Received updated votes:", updatedVotes);
             setVotes(updatedVotes);
         });
 
         // Listen for vote reveal
         socketService.on(SocketEvent.REVEAL_VOTES, (revealed: boolean) => {
+            console.log("Votes revealed:", revealed);
             setIsRevealed(revealed);
         });
 
-        // Listen for vote reset
-        socketService.on(SocketEvent.RESET_VOTES, () => {
-            // Important: clear ALL states
-            setSelectedValue(null);
-            setVotes({});
-            setIsRevealed(false);
-            setIsSubmitting(false);
-        });
-
-        // Listen for issue updates
-        socketService.on(SocketEvent.ISSUE_UPDATED, (issue: string) => {
-            setCurrentIssue(issue);
-        });
+        // Rest of your event listeners...
 
         return () => {
             // Clean up event listeners

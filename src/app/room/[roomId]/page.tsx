@@ -66,18 +66,20 @@ const RoomPage: React.FC = () => {
         }
     }, [roomId, userId]);
 
+    const safeRoomId = Array.isArray(roomId) ? roomId[0] : roomId;
+
     // Initialize socket connection
     useEffect(() => {
-        if (!userId || !roomId || !room) return;
+        if (!userId || !safeRoomId || !room) return;
 
         // Connect to socket
-        const socketInstance = socketService.connect(roomId as string, userId);
+        const socketInstance = socketService.connect(safeRoomId, userId);
         setSocket(socketInstance);
 
         // Socket event listeners
         socketService.on(SocketEvent.USER_JOINED, async () => {
             try {
-                const data = await apiService.getRoomData(roomId as string);
+                const data = await apiService.getRoomData(safeRoomId);
                 setUsers(data.users);
             } catch (error) {
                 console.error('Error updating users after join:', error);
@@ -111,7 +113,7 @@ const RoomPage: React.FC = () => {
         return () => {
             socketService.disconnect();
         };
-    }, [roomId, userId, room, router]);
+    }, [safeRoomId, userId, room]);
 
     const handleKickUser = (kickUserId: string) => {
         if (userId === room?.hostId) {
