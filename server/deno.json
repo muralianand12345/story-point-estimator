@@ -1,38 +1,38 @@
 {
-  "tasks": {
-    "dev": "deno run --allow-net --allow-read --allow-env app.ts",
-    "start": "deno run --allow-net --allow-read --allow-env app.ts"
-  },
-  "lint": {
-    "include": [
-      "**/*.ts"
-    ],
-    "exclude": [
-      "node_modules/"
-    ],
-    "rules": {
-      "tags": [
-        "recommended"
-      ],
-      "exclude": [
-        "no-explicit-any"
-      ]
+    "tasks": {
+        "dev": "deno run --allow-net --allow-read --allow-env main.ts",
+        "start": "deno run --allow-net --allow-read --allow-env main.ts"
+    },
+    "lint": {
+        "include": [
+            "**/*.ts"
+        ],
+        "exclude": [
+            "node_modules/"
+        ],
+        "rules": {
+            "tags": [
+                "recommended"
+            ],
+            "exclude": [
+                "no-explicit-any"
+            ]
+        }
+    },
+    "compilerOptions": {
+        "strict": true,
+        "noImplicitAny": true,
+        "strictNullChecks": true,
+        "strictFunctionTypes": true,
+        "strictPropertyInitialization": true,
+        "noImplicitThis": true
+    },
+    "deploy": {
+        "project": "8606cb23-e28d-4a87-88ba-de974eaf0194",
+        "exclude": [
+            "**/node_modules"
+        ],
+        "include": [],
+        "entrypoint": "main.ts"
     }
-  },
-  "compilerOptions": {
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "strictPropertyInitialization": true,
-    "noImplicitThis": true
-  },
-  "deploy": {
-    "project": "8606cb23-e28d-4a87-88ba-de974eaf0194",
-    "exclude": [
-      "**/node_modules"
-    ],
-    "include": [],
-    "entrypoint": "app.ts"
-  }
 }
