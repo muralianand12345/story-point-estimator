@@ -29,7 +29,10 @@ export class SocketService {
             this.userId = userId;
 
             // Get the WebSocket URL from environment variables
-            this.url = process.env.NEXT_PUBLIC_DENO_WS_URL || 'ws://localhost:8000/ws';
+            this.url = process.env.NEXT_PUBLIC_DENO_WS_URL || '';
+            if (!this.url || this.url === '') {
+                throw new Error('WebSocket URL is not defined in environment variables');
+            }
 
             console.log(`Connecting WebSocket for room ${roomId}, user ${userId}`);
 

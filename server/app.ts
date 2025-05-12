@@ -1,11 +1,20 @@
 import { Application, oakCors, load } from "./deps.ts";
 import { router } from "./routes/mod.ts";
 import { handleWs } from "./ws/mod.ts";
+import { runMigrations } from "./db/migrations.ts";
 
 // Load environment variables
 await load({ export: true });
 
 const app = new Application();
+
+try {
+    await runMigrations();
+    console.log("Database migrations completed");
+} catch (error) {
+    console.error("Failed to run migrations:", error);
+    Deno.exit(1);
+}
 
 // CORS configuration
 app.use(oakCors({

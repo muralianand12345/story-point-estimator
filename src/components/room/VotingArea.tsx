@@ -38,21 +38,21 @@ const VotingArea: React.FC<VotingAreaProps> = ({
 
     // Set up socket event listeners
     useEffect(() => {
-        const socket = socketService.getSocket();
-        if (!socket) return;
+        // Don't get the raw socket - use the socketService methods directly
+        if (!socketService.isConnected()) return;
 
-        // Listen for vote updates
-        socket.on(SocketEvent.VOTES_UPDATED, (updatedVotes: Record<string, Vote>) => {
+        // Listen for vote updates using socketService.on()
+        socketService.on(SocketEvent.VOTES_UPDATED, (updatedVotes: Record<string, Vote>) => {
             setVotes(updatedVotes);
         });
 
         // Listen for vote reveal
-        socket.on(SocketEvent.REVEAL_VOTES, (revealed: boolean) => {
+        socketService.on(SocketEvent.REVEAL_VOTES, (revealed: boolean) => {
             setIsRevealed(revealed);
         });
 
         // Listen for vote reset
-        socket.on(SocketEvent.RESET_VOTES, () => {
+        socketService.on(SocketEvent.RESET_VOTES, () => {
             // Important: clear ALL states
             setSelectedValue(null);
             setVotes({});
@@ -61,18 +61,16 @@ const VotingArea: React.FC<VotingAreaProps> = ({
         });
 
         // Listen for issue updates
-        socket.on(SocketEvent.ISSUE_UPDATED, (issue: string) => {
+        socketService.on(SocketEvent.ISSUE_UPDATED, (issue: string) => {
             setCurrentIssue(issue);
         });
 
         return () => {
             // Clean up event listeners
-            if (socket) {
-                socket.off(SocketEvent.VOTES_UPDATED);
-                socket.off(SocketEvent.REVEAL_VOTES);
-                socket.off(SocketEvent.RESET_VOTES);
-                socket.off(SocketEvent.ISSUE_UPDATED);
-            }
+            socketService.off(SocketEvent.VOTES_UPDATED);
+            socketService.off(SocketEvent.REVEAL_VOTES);
+            socketService.off(SocketEvent.RESET_VOTES);
+            socketService.off(SocketEvent.ISSUE_UPDATED);
         };
     }, []);
 
@@ -93,41 +91,31 @@ const VotingArea: React.FC<VotingAreaProps> = ({
             serverValue = Number(value);
         }
 
-        // Get socket
-        const socket = socketService.getSocket();
-        if (socket) {
-            // Emit vote to server
-            socket.emit(SocketEvent.SUBMIT_VOTE, serverValue);
+        // Use socketService method instead of socket.emit
+        socketService.submitVote(serverValue);
 
-            // Reset submitting state after a short delay
-            setTimeout(() => setIsSubmitting(false), 300);
-        } else {
-            // If no socket, just reset submitting state
-            setIsSubmitting(false);
-        }
+        // Reset submitting state after a short delay
+        setTimeout(() => setIsSubmitting(false), 300);
     };
 
     // Reveal votes (host only)
     const handleRevealVotes = () => {
-        const socket = socketService.getSocket();
-        if (socket && isHost) {
-            socket.emit(SocketEvent.REVEAL_VOTES, true);
+        if (isHost) {
+            socketService.revealVotes(true);
         }
     };
 
     // Reset votes (host only)
     const handleResetVotes = () => {
-        const socket = socketService.getSocket();
-        if (socket && isHost) {
-            socket.emit(SocketEvent.RESET_VOTES);
+        if (isHost) {
+            socketService.resetVotes();
         }
     };
 
     // Update issue (host only)
     const handleUpdateIssue = () => {
-        const socket = socketService.getSocket();
-        if (socket && isHost && issueInput.trim()) {
-            socket.emit(SocketEvent.ISSUE_UPDATED, issueInput.trim());
+        if (isHost && issueInput.trim()) {
+            socketService.updateIssue(issueInput.trim());
             setIssueInput('');
         }
     };
