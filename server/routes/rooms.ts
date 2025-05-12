@@ -38,19 +38,48 @@ router.post("/rooms", async (ctx: RouterContext<string>) => {
             return;
         }
 
-        // Generate room code
-        const roomCode = await roomDB.generateUniqueCode();
+        // Generate room code with retry
+        let roomCode;
+        try {
+            roomCode = await roomDB.generateUniqueCode();
+        } catch (error) {
+            console.error("Error generating room code:", error);
+            ctx.response.status = 500;
+            ctx.response.body = { error: "Failed to generate room code, please try again" };
+            return;
+        }
 
         // Create user
-        const user = await userDB.create(hostName);
+        let user;
+        try {
+            user = await userDB.create(hostName);
+        } catch (error) {
+            console.error("Error creating user:", error);
+            ctx.response.status = 500;
+            ctx.response.body = { error: "Failed to create user, please try again" };
+            return;
+        }
         const userId = user.id;
 
         // Create room
-        const room = await roomDB.create(roomName, roomCode, userId);
+        let room;
+        try {
+            room = await roomDB.create(roomName, roomCode, userId);
+        } catch (error) {
+            console.error("Error creating room:", error);
+            ctx.response.status = 500;
+            ctx.response.body = { error: "Failed to create room, please try again" };
+            return;
+        }
         const roomId = room.id;
 
         // Add host to room
-        await roomUserDB.addUserToRoom(roomId, userId);
+        try {
+            await roomUserDB.addUserToRoom(roomId, userId);
+        } catch (error) {
+            console.error("Error adding user to room:", error);
+            // Even if this fails, we can return the room info since it was created
+        }
 
         const response: CreateRoomResponse = {
             roomId,

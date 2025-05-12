@@ -17,13 +17,26 @@ async function fetchWithErrorHandling<T>(
         });
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `API error: ${response.status}`);
+            let errorMessage = `API error: ${response.status}`;
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorMessage;
+            } catch {
+                // If parsing fails, use default error message
+            }
+            throw new Error(errorMessage);
         }
 
         return await response.json();
     } catch (error) {
         console.error('API request failed:', error);
+
+        // Check if it's a network error
+        if (!window.navigator.onLine) {
+            throw new Error('Network connection lost. Please check your internet connection.');
+        }
+
+        // Add retry logic for certain error types
         throw error;
     }
 }

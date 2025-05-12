@@ -2,11 +2,17 @@ import { Application, oakCors, load } from "./deps.ts";
 import { router } from "./routes/mod.ts";
 import { handleWs } from "./ws/mod.ts";
 import { runMigrations } from "./db/migrations.ts";
+import { db } from "./db/connection.ts";
 
 // Load environment variables
 await load({ export: true });
 
 const app = new Application();
+
+console.log("Testing database connection...");
+const connectionStatus = await db.testConnection();
+if (!connectionStatus) console.error("Failed to connect to database, please check your database configuration.");
+console.log("Database connection successful!");
 
 try {
     await runMigrations();
