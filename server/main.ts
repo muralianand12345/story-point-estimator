@@ -13,7 +13,6 @@ try {
     console.log("Database migrations completed");
 } catch (error) {
     console.error("Failed to run migrations:", error);
-    Deno.exit(1);
 }
 
 // CORS configuration
