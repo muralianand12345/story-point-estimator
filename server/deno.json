@@ -1,30 +1,30 @@
 {
     "tasks": {
-        "dev": "deno run --allow-net --allow-env --allow-read --watch --no-check src/index.ts",
-        "start": "deno run --allow-net --allow-env --allow-read src/index.ts"
-    },
-    "importMap": "./import_map.json",
-    "compilerOptions": {
-        "strict": true,
-        "lib": [
-            "deno.window",
-            "deno.ns",
-            "dom"
-        ],
-        "types": [
-            "./src/types/index.ts"
-        ]
+        "dev": "deno run --allow-net --allow-read --allow-env app.ts",
+        "start": "deno run --allow-net --allow-read --allow-env app.ts"
     },
     "lint": {
         "include": [
-            "src/"
-        ]
-    },
-    "fmt": {
-        "include": [
-            "src/"
+            "**/*.ts"
         ],
-        "indentWidth": 2,
-        "semiColons": true
+        "exclude": [
+            "node_modules/"
+        ],
+        "rules": {
+            "tags": [
+                "recommended"
+            ],
+            "exclude": [
+                "no-explicit-any"
+            ]
+        }
+    },
+    "compilerOptions": {
+        "strict": true,
+        "noImplicitAny": true,
+        "strictNullChecks": true,
+        "strictFunctionTypes": true,
+        "strictPropertyInitialization": true,
+        "noImplicitThis": true
     }
 }

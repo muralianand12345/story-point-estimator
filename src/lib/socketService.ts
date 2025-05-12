@@ -29,7 +29,7 @@ export class SocketService {
             this.userId = userId;
 
             // Get the WebSocket URL from environment variables
-            this.url = process.env.NEXT_PUBLIC_DENO_WS_URL || 'wss://your-deno-server.com/ws';
+            this.url = process.env.NEXT_PUBLIC_DENO_WS_URL || 'ws://localhost:8000/ws';
 
             console.log(`Connecting WebSocket for room ${roomId}, user ${userId}`);
 

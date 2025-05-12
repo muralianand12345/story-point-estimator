@@ -1,26 +1,3 @@
-// WebSocket client connection interface
-export interface WebSocketClient extends WebSocket {
-    userId?: string;
-    roomId?: string;
-}
-
-// Database models
-export interface User {
-    id: string;
-    name: string;
-    created_at: Date;
-}
-
-export interface Room {
-    id: string;
-    name: string;
-    room_code: string;
-    created_at: Date;
-    host_id: string;
-    is_active: boolean;
-}
-
-// Socket events
 export enum SocketEvent {
     USER_JOINED = 'user-joined',
     USER_LEFT = 'user-left',
@@ -48,7 +25,13 @@ export interface VotingState {
 
 export interface SocketMessage {
     event: string;
-    userId?: string;
-    roomId?: string;
-    payload?: unknown;
+    userId: string;
+    roomId: string;
+    payload: unknown;
+}
+
+export interface WebSocketClient {
+    socket: WebSocket;
+    userId: string;
+    roomId: string;
 }

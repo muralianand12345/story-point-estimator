@@ -1,5 +1,4 @@
-// Base URL for the Deno API - should be set in environment variables
-const API_BASE_URL = process.env.NEXT_PUBLIC_DENO_API_URL || 'https://your-deno-api.com';
+const API_BASE_URL = process.env.NEXT_PUBLIC_DENO_API_URL || 'http://localhost:8000/api';
 
 /**
  * Generic fetch wrapper with error handling
