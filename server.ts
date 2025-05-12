@@ -1,8 +1,6 @@
 import { createServer } from 'http';
-import { NextApiRequest, NextApiResponse } from 'next';
 import { parse } from 'url';
 import next from 'next';
-import { setupSocketServer } from './src/app/api/socket/route';
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
@@ -25,9 +23,6 @@ app.prepare().then(() => {
             res.end('Internal Server Error');
         }
     });
-
-    // Set up Socket.io
-    setupSocketServer(server);
 
     server.listen(port, () => {
         console.log(`> Ready on http://${hostname}:${port}`);

@@ -1,0 +1,8 @@
+{
+    "imports": {
+        "std/": "https://deno.land/std@0.204.0/",
+        "postgres": "https://deno.land/x/postgres@v0.17.0/mod.ts",
+        "uuid": "https://deno.land/std@0.204.0/uuid/mod.ts",
+        "@/": "./src/"
+    }
+}

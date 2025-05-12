@@ -1,10 +1,16 @@
-import { io, Socket } from 'socket.io-client';
 import { SocketEvent } from '@/types';
 
-// Class to manage socket connections
+// Class to manage native WebSocket connections
 export class SocketService {
     private static instance: SocketService;
-    private socket: Socket | null = null;
+    private socket: WebSocket | null = null;
+    private eventListeners: Map<string, Array<(data: any) => void>> = new Map();
+    private reconnectAttempts = 0;
+    private maxReconnectAttempts = 5;
+    private reconnectDelay = 1000;
+    private url: string = '';
+    private roomId: string = '';
+    private userId: string = '';
 
     private constructor() { }
 
@@ -16,85 +22,208 @@ export class SocketService {
         return SocketService.instance;
     }
 
-    // Connect to the Socket.io server
-    public connect(roomId: string, userId: string): Socket {
-        if (!this.socket) {
-            console.log(`Connecting socket for room ${roomId}, user ${userId}`);
-            this.socket = io({
-                path: '/api/socketio',
-                query: {
-                    roomId,
-                    userId,
-                },
-            });
+    // Connect to the WebSocket server
+    public connect(roomId: string, userId: string): WebSocket {
+        if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+            this.roomId = roomId;
+            this.userId = userId;
 
-            this.socket.on('connect', () => {
-                console.log('Socket connected successfully');
-            });
+            // Get the WebSocket URL from environment variables or fallback to a default
+            this.url = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'wss://your-deno-server.com/ws';
 
-            this.socket.on('connect_error', (err) => {
-                console.error('Socket connection error:', err);
-            });
+            console.log(`Connecting WebSocket for room ${roomId}, user ${userId}`);
 
-            this.socket.on('error', (err) => {
-                console.error('Socket error:', err);
-            });
-        } else {
-            console.log('Socket already connected');
+            this.socket = new WebSocket(this.url);
+
+            this.socket.onopen = this.handleOpen.bind(this);
+            this.socket.onmessage = this.handleMessage.bind(this);
+            this.socket.onclose = this.handleClose.bind(this);
+            this.socket.onerror = this.handleError.bind(this);
         }
+
         return this.socket;
     }
 
-    // Disconnect the socket
+    private handleOpen(event: Event) {
+        console.log('WebSocket connected successfully');
+
+        // Send initialization message with userId and roomId
+        this.send({
+            event: 'init',
+            userId: this.userId,
+            roomId: this.roomId,
+            payload: null
+        });
+
+        // Reset reconnect attempts on successful connection
+        this.reconnectAttempts = 0;
+    }
+
+    private handleMessage(event: MessageEvent) {
+        try {
+            const data = JSON.parse(event.data);
+            const { event: eventName, payload } = data;
+
+            // Dispatch event to all registered listeners
+            if (this.eventListeners.has(eventName)) {
+                this.eventListeners.get(eventName)?.forEach(callback => callback(payload));
+            }
+        } catch (error) {
+            console.error('Error parsing WebSocket message:', error);
+        }
+    }
+
+    private handleClose(event: CloseEvent) {
+        console.log(`WebSocket closed: ${event.code} ${event.reason}`);
+
+        // Attempt to reconnect if not closed intentionally
+        if (event.code !== 1000) {
+            this.attemptReconnect();
+        }
+    }
+
+    private handleError(event: Event) {
+        console.error('WebSocket error:', event);
+
+        // Close the socket and attempt to reconnect
+        if (this.socket) {
+            this.socket.close();
+            this.socket = null;
+        }
+
+        this.attemptReconnect();
+    }
+
+    private attemptReconnect() {
+        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+            this.reconnectAttempts++;
+            const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+
+            console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+
+            setTimeout(() => {
+                if (this.roomId && this.userId) {
+                    this.connect(this.roomId, this.userId);
+                }
+            }, delay);
+        } else {
+            console.error('Maximum reconnect attempts reached. WebSocket connection failed.');
+        }
+    }
+
+    // Add an event listener
+    public on(event: string, callback: (data: any) => void): void {
+        if (!this.eventListeners.has(event)) {
+            this.eventListeners.set(event, []);
+        }
+
+        this.eventListeners.get(event)?.push(callback);
+    }
+
+    // Remove an event listener
+    public off(event: string, callback?: (data: any) => void): void {
+        if (!callback) {
+            // Remove all listeners for this event
+            this.eventListeners.delete(event);
+        } else if (this.eventListeners.has(event)) {
+            // Remove specific listener for this event
+            const listeners = this.eventListeners.get(event) || [];
+            this.eventListeners.set(
+                event,
+                listeners.filter(cb => cb !== callback)
+            );
+        }
+    }
+
+    // Send a message to the WebSocket server
+    private send(data: any): void {
+        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+            this.socket.send(JSON.stringify(data));
+        } else {
+            console.error('WebSocket not connected, cannot send message');
+        }
+    }
+
+    // Disconnect the WebSocket
     public disconnect(): void {
         if (this.socket) {
-            this.socket.disconnect();
+            this.socket.close(1000, 'Client disconnected intentionally');
             this.socket = null;
-            console.log('Socket disconnected');
+            this.eventListeners.clear();
+            console.log('WebSocket disconnected');
         }
     }
 
-    // Get the socket instance
-    public getSocket(): Socket | null {
+    // Get the WebSocket instance
+    public getSocket(): WebSocket | null {
         return this.socket;
     }
 
-    // Check if socket is connected
+    // Check if WebSocket is connected
     public isConnected(): boolean {
-        return this.socket?.connected || false;
+        return this.socket?.readyState === WebSocket.OPEN;
     }
 
     // Emit a kick user event
     public kickUser(userId: string): void {
-        this.socket?.emit(SocketEvent.KICK_USER, userId);
+        this.send({
+            event: SocketEvent.KICK_USER,
+            userId: this.userId,
+            roomId: this.roomId,
+            payload: userId
+        });
     }
 
     // Emit a leave room event
     public leaveRoom(): void {
-        this.socket?.emit(SocketEvent.LEAVE_ROOM);
+        this.send({
+            event: SocketEvent.LEAVE_ROOM,
+            userId: this.userId,
+            roomId: this.roomId,
+            payload: null
+        });
         this.disconnect();
     }
 
+    // Submit a vote
     public submitVote(value: number | null): void {
         console.log(`Submitting vote: ${value}`);
-        if (this.socket) {
-            this.socket.emit(SocketEvent.SUBMIT_VOTE, value);
-            console.log('Vote submitted successfully');
-        } else {
-            console.error('Socket not connected, cannot submit vote');
-        }
+        this.send({
+            event: SocketEvent.SUBMIT_VOTE,
+            userId: this.userId,
+            roomId: this.roomId,
+            payload: value
+        });
     }
 
+    // Reveal votes
     public revealVotes(reveal: boolean): void {
-        this.socket?.emit(SocketEvent.REVEAL_VOTES, reveal);
+        this.send({
+            event: SocketEvent.REVEAL_VOTES,
+            userId: this.userId,
+            roomId: this.roomId,
+            payload: reveal
+        });
     }
 
+    // Reset votes
     public resetVotes(): void {
-        this.socket?.emit(SocketEvent.RESET_VOTES);
+        this.send({
+            event: SocketEvent.RESET_VOTES,
+            userId: this.userId,
+            roomId: this.roomId,
+            payload: null
+        });
     }
 
+    // Update the current issue
     public updateIssue(issue: string): void {
-        this.socket?.emit(SocketEvent.ISSUE_UPDATED, issue);
+        this.send({
+            event: SocketEvent.ISSUE_UPDATED,
+            userId: this.userId,
+            roomId: this.roomId,
+            payload: issue
+        });
     }
 }
 
