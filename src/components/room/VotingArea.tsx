@@ -40,10 +40,20 @@ const VotingArea: React.FC<VotingAreaProps> = ({
     useEffect(() => {
         if (!socketService.isConnected()) return;
 
-        // Listen for vote updates using socketService.on()
+        // Listen for vote updates
         socketService.on(SocketEvent.VOTES_UPDATED, (updatedVotes: Record<string, Vote>) => {
             console.log("Received updated votes:", updatedVotes);
             setVotes(updatedVotes);
+
+            // Update selected value based on current user's vote
+            const userVote = updatedVotes[currentUserId];
+            if (userVote) {
+                if (userVote.value === null) {
+                    setSelectedValue('Pass');
+                } else {
+                    setSelectedValue(userVote.value);
+                }
+            }
         });
 
         // Listen for vote reveal
@@ -52,16 +62,28 @@ const VotingArea: React.FC<VotingAreaProps> = ({
             setIsRevealed(revealed);
         });
 
-        // Rest of your event listeners...
+        // Listen for vote reset
+        socketService.on(SocketEvent.RESET_VOTES, () => {
+            console.log("Votes reset");
+            setVotes({});
+            setSelectedValue(null);
+            setIsRevealed(false);
+        });
+
+        // Listen for issue updates
+        socketService.on(SocketEvent.ISSUE_UPDATED, (issue: string) => {
+            console.log("Issue updated:", issue);
+            setCurrentIssue(issue);
+        });
 
         return () => {
-            // Clean up event listeners
+            // Clean up all event listeners
             socketService.off(SocketEvent.VOTES_UPDATED);
             socketService.off(SocketEvent.REVEAL_VOTES);
             socketService.off(SocketEvent.RESET_VOTES);
             socketService.off(SocketEvent.ISSUE_UPDATED);
         };
-    }, []);
+    }, [currentUserId]);
 
     // Simplified vote handler
     const handleVote = (value: number | string) => {
@@ -76,11 +98,24 @@ const VotingArea: React.FC<VotingAreaProps> = ({
 
         // Process value for server
         let serverValue: number | null = null;
-        if (value !== '?' && value !== 'Pass') {
+        if (value === 'Pass') {
+            serverValue = null; // Pass is represented as null on the server
+        } else if (value === '?') {
+            // For "?" votes, we'll use -1 as a special indicator on the server
+            serverValue = -1;
+        } else {
             serverValue = Number(value);
         }
 
-        // Use socketService method instead of socket.emit
+        // Update the local votes state immediately for better UX
+        const updatedVotes = { ...votes };
+        updatedVotes[currentUserId] = {
+            userId: currentUserId,
+            value: serverValue
+        };
+        setVotes(updatedVotes);
+
+        // Use socketService method to send to server
         socketService.submitVote(serverValue);
 
         // Reset submitting state after a short delay
@@ -89,7 +124,8 @@ const VotingArea: React.FC<VotingAreaProps> = ({
 
     // Reveal votes (host only)
     const handleRevealVotes = () => {
-        if (isHost) {
+        if (isHost && !isRevealed) {
+            console.log("Revealing votes...");
             socketService.revealVotes(true);
         }
     };
