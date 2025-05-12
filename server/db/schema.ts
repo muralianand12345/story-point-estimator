@@ -134,7 +134,7 @@ export const roomUserDB = {
             return result.rows[0];
         } catch (error) {
             // If user is already in room, just return the existing record
-            if (error.message.includes("duplicate key")) {
+            if (error instanceof Error && error.message.includes("duplicate key")) {
                 const result = await db.query<RoomUser>(
                     "SELECT room_id, user_id, joined_at FROM room_users WHERE room_id = $1 AND user_id = $2",
                     [roomId, userId]
