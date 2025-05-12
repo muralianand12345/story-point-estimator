@@ -136,6 +136,7 @@ const VotingArea: React.FC<VotingAreaProps> = ({
 
     // Update issue (host only)
     const handleUpdateIssue = () => {
+        console.log(`Attempting to update issue: ${issueInput}, isHost: ${isHost}`);
         if (isHost && issueInput.trim()) {
             socketService.updateIssue(issueInput.trim());
             setIssueInput('');
