@@ -265,30 +265,77 @@ class RoomManager {
 
     // Handle vote submission
     async submitVote(roomId: string, userId: string, value: number | null): Promise<void> {
-        const roomState = this.roomStates.get(roomId);
-        if (!roomState) return;
+        console.log(`Vote received from ${userId} in room ${roomId}: ${value}`);
+
+        // Ensure room state exists
+        let roomState = this.roomStates.get(roomId);
+        if (!roomState) {
+            console.log(`Room state not found for ${roomId}, initializing...`);
+            await this.initializeRoomState(roomId);
+            roomState = this.roomStates.get(roomId);
+
+            if (!roomState) {
+                console.error(`Failed to initialize room state for ${roomId}`);
+                return;
+            }
+        }
 
         // Don't allow voting if votes are revealed
-        if (roomState.isRevealed) return;
+        if (roomState.isRevealed) {
+            console.log(`Votes already revealed in room ${roomId}, rejecting vote`);
+            return;
+        }
 
         try {
             // Store vote in database
+            console.log(`Storing vote in database: ${userId}, ${value}`);
             await voteDB.submitVote(roomId, userId, value);
 
             // Update local state
             roomState.votes[userId] = { userId, value };
+            console.log(`Updated local vote state for ${userId}: ${value}`);
 
-            console.log(`Vote submitted in room ${roomId} by ${userId}: ${value}`);
-
-            // Broadcast updated votes
+            // Broadcast updated votes to all clients
+            console.log(`Broadcasting votes update to room ${roomId}`);
             this.broadcastToRoom(roomId, {
                 event: SocketEvent.VOTES_UPDATED,
                 userId,
                 roomId,
                 payload: roomState.votes
             });
+
+            // Send confirmation directly to voting user
+            this.sendToClient(userId, roomId, {
+                event: 'vote-confirmed',
+                userId,
+                roomId,
+                payload: { value }
+            });
         } catch (error) {
-            console.error(`Error submitting vote: ${error}`);
+            console.error(`Error processing vote: ${error}`);
+
+            // Send error back to client
+            this.sendToClient(userId, roomId, {
+                event: 'error',
+                userId,
+                roomId,
+                payload: { message: 'Vote processing failed', error: String(error) }
+            });
+        }
+    }
+
+    sendToClient(userId: string, roomId: string, message: any): void {
+        const clientId = `${userId}-${roomId}`;
+        const client = this.clients.get(clientId);
+
+        if (client && client.socket.readyState === WebSocket.OPEN) {
+            try {
+                client.socket.send(JSON.stringify(message));
+            } catch (error) {
+                console.error(`Error sending to client ${clientId}:`, error);
+            }
+        } else {
+            console.warn(`Cannot send to client ${clientId}: not found or socket not open`);
         }
     }
 

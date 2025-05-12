@@ -18,6 +18,7 @@ import socketService from '@/lib/socketService';
 import VotingArea from '@/components/room/VotingArea';
 import { Room, User, SocketEvent } from '@/types';
 import apiService from '@/lib/apiService';
+import Debug from '@/components/room/DebugPanel';
 
 const RoomPage: React.FC = () => {
     const { roomId } = useParams<{ roomId: string }>();
@@ -228,6 +229,18 @@ const RoomPage: React.FC = () => {
                     />
                 </Grid>
             </Grid>
+            {/* Debug panel */}
+            {isMobile ? (
+                <Box sx={{ mt: 2 }}>
+                    <Debug roomId={roomId} userId={userId} />
+                </Box>
+            ) : (
+                <Grid container spacing={3} sx={{ mt: 2 }}>
+                    <Grid item xs={12}>
+                        <Debug roomId={roomId} userId={userId} />
+                    </Grid>
+                </Grid>
+            )}
         </Container>
     );
 };

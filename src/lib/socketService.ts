@@ -67,6 +67,29 @@ export class SocketService {
 
         // Reset reconnect attempts on successful connection
         this.reconnectAttempts = 0;
+
+        // Add a ping interval to keep connection alive
+        this.startPingInterval();
+    }
+
+    private startPingInterval() {
+        // Clear any existing interval
+        if (this.pingInterval) {
+            clearInterval(this.pingInterval);
+        }
+
+        // Set up a new ping interval (every 30 seconds)
+        this.pingInterval = setInterval(() => {
+            if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                console.log('Sending ping to keep connection alive');
+                this.send({
+                    event: 'ping',
+                    userId: this.userId,
+                    roomId: this.roomId,
+                    payload: null
+                });
+            }
+        }, 30000);
     }
 
     private handleMessage(event: MessageEvent) {
@@ -161,15 +184,32 @@ export class SocketService {
 
     // Send a message to the WebSocket server
     private send(data: any): void {
-        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-            this.socket.send(JSON.stringify(data));
-        } else {
-            console.error('WebSocket not connected, cannot send message');
+        if (!this.socket) {
+            console.error("Cannot send message: Socket is null");
+            return;
+        }
+
+        if (this.socket.readyState !== WebSocket.OPEN) {
+            console.error(`Cannot send message: Socket not open (state: ${this.socket.readyState})`);
+            return;
+        }
+
+        try {
+            const message = JSON.stringify(data);
+            this.socket.send(message);
+            console.log(`Message sent (${message.length} bytes)`);
+        } catch (error) {
+            console.error("Error stringifying or sending message:", error);
         }
     }
 
     // Disconnect the WebSocket
     public disconnect(): void {
+        if (this.pingInterval) {
+            clearInterval(this.pingInterval);
+            this.pingInterval = null;
+        }
+
         if (this.socket) {
             // Remove all event listeners before disconnecting
             this.eventListeners.clear();
@@ -216,12 +256,62 @@ export class SocketService {
 
     // Submit a vote
     public submitVote(value: number | null): void {
-        this.send({
+        console.log(`Submitting vote to server: ${value}`);
+
+        // Ensure we're connected
+        if (!this.isConnected()) {
+            console.error("WebSocket not connected for vote submission");
+
+            // Try to reconnect
+            this.connect(this.roomId, this.userId);
+
+            // Retry after reconnection attempt
+            setTimeout(() => {
+                if (this.isConnected()) {
+                    this.submitVote(value);
+                } else {
+                    console.error("Failed to reconnect for vote submission");
+                }
+            }, 1000);
+            return;
+        }
+
+        // Prepare and send the vote message
+        const voteMessage = {
             event: SocketEvent.SUBMIT_VOTE,
             userId: this.userId,
             roomId: this.roomId,
             payload: value
-        });
+        };
+
+        // Log the exact message being sent
+        console.log("Sending vote message:", JSON.stringify(voteMessage));
+
+        // Ensure message is sent properly
+        try {
+            this.send(voteMessage);
+            console.log("Vote message sent successfully");
+        } catch (error) {
+            console.error("Error sending vote message:", error);
+        }
+    }
+
+    private reconnectAndRetry(callback: () => void) {
+        console.log('Attempting to reconnect before retrying operation');
+        this.disconnect();
+
+        setTimeout(() => {
+            this.connect(this.roomId, this.userId);
+
+            // Wait for connection and retry
+            setTimeout(() => {
+                if (this.isConnected()) {
+                    callback();
+                } else {
+                    console.error('Failed to reconnect for retry');
+                }
+            }, 1000);
+        }, 500);
     }
 
     // Reveal votes
@@ -246,13 +336,29 @@ export class SocketService {
 
     // Update the current issue
     public updateIssue(issue: string): void {
+        console.log(`Updating issue to server: ${issue}`);
+
+        if (!this.isConnected()) {
+            console.error('Cannot update issue: WebSocket not connected');
+            this.reconnectAndRetry(() => this.updateIssue(issue));
+            return;
+        }
+
         this.send({
             event: SocketEvent.ISSUE_UPDATED,
             userId: this.userId,
             roomId: this.roomId,
             payload: issue
         });
+
+        // Trigger a debug event
+        this.eventListeners.get('debug-event')?.forEach(callback => {
+            callback({ type: 'issue-update-sent', issue });
+        });
     }
+
+    private pingInterval: NodeJS.Timeout | null = null;
+
 }
 
 export default SocketService.getInstance();

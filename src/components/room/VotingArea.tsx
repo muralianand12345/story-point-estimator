@@ -95,27 +95,56 @@ const VotingArea: React.FC<VotingAreaProps> = ({
         // Don't allow voting if votes are revealed or already submitting
         if (isRevealed || isSubmitting) return;
 
+        console.log(`Vote initiated for value: ${value}`);
+
         // Mark as submitting to prevent double-votes
         setIsSubmitting(true);
-
-        // Update UI immediately for better responsiveness
-        setSelectedValue(value);
 
         // Process value for server
         let serverValue: number | null = null;
         if (value === 'Pass') {
-            serverValue = null; // Pass is represented as null on the server
+            serverValue = null;
         } else if (value === '?') {
-            // For "?" votes, we'll use -1 as a special indicator on the server
             serverValue = -1;
         } else {
             serverValue = Number(value);
         }
 
-        // Submit the vote through socket service
-        socketService.submitVote(serverValue);
+        // Force a local update for immediate feedback
+        const localVote = {
+            userId: currentUserId,
+            value: serverValue
+        };
 
-        // Reset submitting state after a short delay
+        // Update UI immediately
+        setSelectedValue(value);
+        setVotes(prev => ({
+            ...prev,
+            [currentUserId]: localVote
+        }));
+
+        // Submit to server
+        try {
+            socketService.submitVote(serverValue);
+
+            // Debug log
+            console.log(`Vote sent to server: ${serverValue}`);
+
+            // After sending, check if the vote was registered after a delay
+            setTimeout(() => {
+                const userVote = votes[currentUserId];
+                console.log("Current vote state:", userVote);
+
+                if (!userVote || userVote.value !== serverValue) {
+                    console.log("Vote not registered in state, retrying...");
+                    socketService.submitVote(serverValue);
+                }
+            }, 1000);
+        } catch (error) {
+            console.error("Error submitting vote:", error);
+        }
+
+        // Reset submitting state
         setTimeout(() => setIsSubmitting(false), 300);
     };
 
