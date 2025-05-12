@@ -32,17 +32,60 @@ const VotingArea: React.FC<VotingAreaProps> = ({
     const [currentIssue, setCurrentIssue] = useState<string>('');
     const [issueInput, setIssueInput] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+    const [connectionStatus, setConnectionStatus] = useState<boolean>(false);
 
     // Fibonacci-like sequence for story points
     const pointValues = [0, 0.5, 1, 2, 3, 5, 8, 13, 20, 40, 100, '?', 'Pass'];
 
+    // Ensure socket connection is active
+    useEffect(() => {
+        if (!currentUserId) return;
+
+        // Check connection status
+        const isConnected = socketService.isConnected();
+        setConnectionStatus(isConnected);
+
+        if (!isConnected) {
+            console.log("Socket not connected. Connecting...");
+            try {
+                socketService.connect(currentUserId.split('-')[1], currentUserId);
+                setConnectionStatus(true);
+            } catch (error) {
+                console.error("Failed to connect socket:", error);
+                setConnectionStatus(false);
+            }
+        }
+
+        // Set up periodic connection check
+        const intervalId = setInterval(() => {
+            const connected = socketService.isConnected();
+            setConnectionStatus(connected);
+
+            if (!connected) {
+                console.log("Socket disconnected. Reconnecting...");
+                try {
+                    socketService.connect(currentUserId.split('-')[1], currentUserId);
+                } catch (err) {
+                    console.error("Reconnection failed:", err);
+                }
+            }
+        }, 5000);
+
+        return () => clearInterval(intervalId);
+    }, [currentUserId]);
+
     // Set up socket event listeners
     useEffect(() => {
-        if (!socketService.isConnected() || !currentUserId) return;
+        // Don't set up listeners if no user ID or not connected
+        if (!currentUserId) return;
 
-        // Define the event handlers
+        console.log("Setting up socket event listeners");
+
+        // Define the event handlers with proper type casting
         const handleVotesUpdated = (updatedVotes: Record<string, Vote>) => {
             console.log("Received updated votes:", updatedVotes);
+
+            // Update votes with server data
             setVotes(updatedVotes);
 
             // Update selected value based on current user's vote
@@ -59,38 +102,40 @@ const VotingArea: React.FC<VotingAreaProps> = ({
         };
 
         const handleVotesRevealed = (revealed: boolean) => {
-            console.log("Votes revealed:", revealed);
+            console.log("Votes revealed event received:", revealed);
             setIsRevealed(revealed);
         };
 
         const handleVotesReset = () => {
-            console.log("Votes reset");
+            console.log("Votes reset event received");
             setVotes({});
             setSelectedValue(null);
             setIsRevealed(false);
         };
 
         const handleIssueUpdated = (issue: string) => {
-            console.log("Issue updated:", issue);
+            console.log("Issue updated event received:", issue);
             setCurrentIssue(issue);
+            // Clear input when issue is updated (especially useful for the host)
+            setIssueInput('');
         };
 
-        // Register event listeners
+        // Register all event listeners
         socketService.on(SocketEvent.VOTES_UPDATED, handleVotesUpdated);
         socketService.on(SocketEvent.REVEAL_VOTES, handleVotesRevealed);
         socketService.on(SocketEvent.RESET_VOTES, handleVotesReset);
         socketService.on(SocketEvent.ISSUE_UPDATED, handleIssueUpdated);
 
         return () => {
-            // Clean up all event listeners
-            socketService.off(SocketEvent.VOTES_UPDATED, handleVotesUpdated);
-            socketService.off(SocketEvent.REVEAL_VOTES, handleVotesRevealed);
-            socketService.off(SocketEvent.RESET_VOTES, handleVotesReset);
-            socketService.off(SocketEvent.ISSUE_UPDATED, handleIssueUpdated);
+            // Clean up event listeners to avoid memory leaks
+            socketService.off(SocketEvent.VOTES_UPDATED);
+            socketService.off(SocketEvent.REVEAL_VOTES);
+            socketService.off(SocketEvent.RESET_VOTES);
+            socketService.off(SocketEvent.ISSUE_UPDATED);
         };
     }, [currentUserId]);
 
-    // Simplified vote handler
+    // Improved vote handler
     const handleVote = (value: number | string) => {
         // Don't allow voting if votes are revealed or already submitting
         if (isRevealed || isSubmitting) return;
@@ -110,65 +155,94 @@ const VotingArea: React.FC<VotingAreaProps> = ({
             serverValue = Number(value);
         }
 
-        // Force a local update for immediate feedback
-        const localVote = {
+        // Update UI immediately for responsiveness
+        setSelectedValue(value);
+
+        // Set a temporary local vote for immediate feedback
+        const tempUserVote = {
             userId: currentUserId,
             value: serverValue
         };
 
-        // Update UI immediately
-        setSelectedValue(value);
         setVotes(prev => ({
             ...prev,
-            [currentUserId]: localVote
+            [currentUserId]: tempUserVote
         }));
 
         // Submit to server
         try {
-            socketService.submitVote(serverValue);
+            if (!socketService.isConnected()) {
+                console.error("Socket not connected, attempting to reconnect...");
+                socketService.connect(currentUserId.split('-')[1], currentUserId);
 
-            // Debug log
-            console.log(`Vote sent to server: ${serverValue}`);
-
-            // After sending, check if the vote was registered after a delay
-            setTimeout(() => {
-                const userVote = votes[currentUserId];
-                console.log("Current vote state:", userVote);
-
-                if (!userVote || userVote.value !== serverValue) {
-                    console.log("Vote not registered in state, retrying...");
-                    socketService.submitVote(serverValue);
-                }
-            }, 1000);
+                // Give it some time to connect
+                setTimeout(() => {
+                    if (socketService.isConnected()) {
+                        socketService.submitVote(serverValue);
+                        console.log(`Vote sent to server after reconnection: ${serverValue}`);
+                    } else {
+                        console.error("Failed to reconnect socket for vote");
+                    }
+                }, 500);
+            } else {
+                socketService.submitVote(serverValue);
+                console.log(`Vote sent to server: ${serverValue}`);
+            }
         } catch (error) {
             console.error("Error submitting vote:", error);
         }
 
-        // Reset submitting state
+        // Reset submitting state after a short delay
         setTimeout(() => setIsSubmitting(false), 300);
     };
 
     // Reveal votes (host only)
     const handleRevealVotes = () => {
         if (isHost && !isRevealed) {
-            console.log("Revealing votes...");
-            socketService.revealVotes(true);
+            try {
+                console.log("Revealing votes...");
+                socketService.revealVotes(true);
+            } catch (error) {
+                console.error("Error revealing votes:", error);
+            }
         }
     };
 
     // Reset votes (host only)
     const handleResetVotes = () => {
         if (isHost) {
-            socketService.resetVotes();
+            try {
+                console.log("Resetting votes...");
+                socketService.resetVotes();
+            } catch (error) {
+                console.error("Error resetting votes:", error);
+            }
         }
     };
 
-    // Update issue (host only)
+    // Update issue (host only) - improved with error handling
     const handleUpdateIssue = () => {
-        console.log(`Attempting to update issue: ${issueInput}, isHost: ${isHost}`);
-        if (isHost && issueInput.trim()) {
-            socketService.updateIssue(issueInput.trim());
-            setIssueInput('');
+        if (!isHost || !issueInput.trim()) return;
+
+        console.log(`Updating issue: ${issueInput}`);
+
+        try {
+            if (!socketService.isConnected()) {
+                console.error("Socket not connected for issue update");
+                socketService.connect(currentUserId.split('-')[1], currentUserId);
+
+                setTimeout(() => {
+                    if (socketService.isConnected()) {
+                        socketService.updateIssue(issueInput.trim());
+                    } else {
+                        console.error("Failed to reconnect for issue update");
+                    }
+                }, 500);
+            } else {
+                socketService.updateIssue(issueInput.trim());
+            }
+        } catch (error) {
+            console.error("Error updating issue:", error);
         }
     };
 
@@ -183,6 +257,14 @@ const VotingArea: React.FC<VotingAreaProps> = ({
             <Box sx={{ mb: 3 }}>
                 <Typography variant="h5" gutterBottom>
                     Story Point Estimation
+                    {!connectionStatus &&
+                        <Chip
+                            size="small"
+                            color="error"
+                            label="Disconnected"
+                            sx={{ ml: 2 }}
+                        />
+                    }
                 </Typography>
 
                 {isHost && (
@@ -199,7 +281,7 @@ const VotingArea: React.FC<VotingAreaProps> = ({
                         <Button
                             variant="contained"
                             onClick={handleUpdateIssue}
-                            disabled={!issueInput.trim()}
+                            disabled={!issueInput.trim() || !connectionStatus}
                         >
                             Set
                         </Button>
@@ -235,7 +317,7 @@ const VotingArea: React.FC<VotingAreaProps> = ({
                                 color="primary"
                                 startIcon={<VisibilityIcon />}
                                 onClick={handleRevealVotes}
-                                disabled={isRevealed || votedCount === 0}
+                                disabled={isRevealed || votedCount === 0 || !connectionStatus}
                                 sx={{ mr: 1 }}
                             >
                                 Reveal Votes
@@ -244,7 +326,7 @@ const VotingArea: React.FC<VotingAreaProps> = ({
                                 variant="outlined"
                                 startIcon={<RestartAltIcon />}
                                 onClick={handleResetVotes}
-                                disabled={!isRevealed && votedCount === 0}
+                                disabled={(!isRevealed && votedCount === 0) || !connectionStatus}
                             >
                                 Reset
                             </Button>
@@ -262,7 +344,7 @@ const VotingArea: React.FC<VotingAreaProps> = ({
                     <Box sx={{ mb: 2 }}>
                         <Typography variant="subtitle1" gutterBottom>
                             Your vote: {hasUserVoted
-                                ? (userVote.value === null ? 'Pass' : userVote.value)
+                                ? (userVote.value === null ? 'Pass' : userVote.value === -1 ? '?' : userVote.value)
                                 : 'Not submitted'}
                         </Typography>
                     </Box>
@@ -275,9 +357,11 @@ const VotingArea: React.FC<VotingAreaProps> = ({
                         p: 2
                     }}>
                         {pointValues.map((value) => {
-                            // Select card if it matches the user's vote or the currently selected value
+                            // Determine if this card should be selected
                             const isSelected = hasUserVoted
-                                ? (userVote.value === null && value === 'Pass') || userVote.value === value
+                                ? (userVote.value === null && value === 'Pass') ||
+                                (userVote.value === -1 && value === '?') ||
+                                userVote.value === value
                                 : selectedValue === value;
 
                             return (
@@ -287,7 +371,7 @@ const VotingArea: React.FC<VotingAreaProps> = ({
                                     selected={isSelected}
                                     onSelect={() => handleVote(value)}
                                     revealed={isRevealed}
-                                    disabled={isSubmitting}
+                                    disabled={isSubmitting || !connectionStatus}
                                 />
                             );
                         })}

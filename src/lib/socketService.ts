@@ -11,6 +11,9 @@ export class SocketService {
     private url: string = '';
     private roomId: string = '';
     private userId: string = '';
+    private pingInterval: NodeJS.Timeout | null = null;
+    private messageQueue: Array<{ event: string, userId: string, roomId: string, payload: any }> = [];
+    private queueProcessor: NodeJS.Timeout | null = null;
 
     private constructor() { }
 
@@ -43,19 +46,32 @@ export class SocketService {
 
             console.log(`Connecting WebSocket for room ${roomId}, user ${userId}`);
 
-            this.socket = new WebSocket(this.url);
+            try {
+                this.socket = new WebSocket(this.url);
 
-            this.socket.onopen = this.handleOpen.bind(this);
-            this.socket.onmessage = this.handleMessage.bind(this);
-            this.socket.onclose = this.handleClose.bind(this);
-            this.socket.onerror = this.handleError.bind(this);
+                this.socket.onopen = this.handleOpen.bind(this);
+                this.socket.onmessage = this.handleMessage.bind(this);
+                this.socket.onclose = this.handleClose.bind(this);
+                this.socket.onerror = this.handleError.bind(this);
+
+                // Start queue processor if it's not running
+                this.startQueueProcessor();
+            } catch (error) {
+                console.error("Error creating WebSocket:", error);
+            }
         }
 
+        if (!this.socket) {
+            throw new Error('WebSocket connection failed to initialize');
+        }
         return this.socket;
     }
 
     private handleOpen(event: Event) {
         console.log('WebSocket connected successfully');
+
+        // Reset reconnect attempts on successful connection
+        this.reconnectAttempts = 0;
 
         // Send initialization message with userId and roomId
         this.send({
@@ -65,11 +81,11 @@ export class SocketService {
             payload: null
         });
 
-        // Reset reconnect attempts on successful connection
-        this.reconnectAttempts = 0;
-
         // Add a ping interval to keep connection alive
         this.startPingInterval();
+
+        // Process any queued messages
+        this.processQueue();
     }
 
     private startPingInterval() {
@@ -116,6 +132,12 @@ export class SocketService {
 
     private handleClose(event: CloseEvent) {
         console.log(`WebSocket closed: ${event.code} ${event.reason}`);
+
+        // Clear ping interval
+        if (this.pingInterval) {
+            clearInterval(this.pingInterval);
+            this.pingInterval = null;
+        }
 
         // Socket reference should be cleared
         this.socket = null;
@@ -168,6 +190,7 @@ export class SocketService {
         }
     }
 
+    // Remove event listener(s)
     public off(event: string, callback?: (data: any) => void): void {
         if (!callback) {
             // Remove all listeners for this event
@@ -182,24 +205,80 @@ export class SocketService {
         }
     }
 
-    // Send a message to the WebSocket server
-    private send(data: any): void {
+    // Queue a message for sending when connection is ready
+    private queueMessage(data: any): void {
+        console.log('Queueing message for later delivery:', data);
+        this.messageQueue.push(data);
+
+        // Ensure the queue processor is running
+        this.startQueueProcessor();
+    }
+
+    // Process the message queue
+    private processQueue(): void {
+        if (this.messageQueue.length === 0) return;
+
+        console.log(`Processing ${this.messageQueue.length} queued messages`);
+
+        // Only process if socket is connected
+        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+            // Create a copy of the queue and clear it
+            const queueToProcess = [...this.messageQueue];
+            this.messageQueue = [];
+
+            // Send each message
+            queueToProcess.forEach(message => {
+                try {
+                    this.send(message);
+                    console.log('Sent queued message:', message);
+                } catch (error) {
+                    console.error('Error sending queued message:', error);
+                    // Put failed messages back in the queue
+                    this.messageQueue.push(message);
+                }
+            });
+        }
+    }
+
+    // Start queue processor timer
+    private startQueueProcessor(): void {
+        if (this.queueProcessor) return;
+
+        this.queueProcessor = setInterval(() => {
+            if (this.socket?.readyState === WebSocket.OPEN) {
+                this.processQueue();
+            }
+
+            // Stop processor if queue is empty
+            if (this.messageQueue.length === 0 && this.queueProcessor) {
+                clearInterval(this.queueProcessor);
+                this.queueProcessor = null;
+            }
+        }, 1000);
+    }
+
+    // Send a message to the WebSocket server with improved error handling
+    private send(data: any): boolean {
         if (!this.socket) {
             console.error("Cannot send message: Socket is null");
-            return;
+            this.queueMessage(data);
+            return false;
         }
 
         if (this.socket.readyState !== WebSocket.OPEN) {
             console.error(`Cannot send message: Socket not open (state: ${this.socket.readyState})`);
-            return;
+            this.queueMessage(data);
+            return false;
         }
 
         try {
             const message = JSON.stringify(data);
             this.socket.send(message);
             console.log(`Message sent (${message.length} bytes)`);
+            return true;
         } catch (error) {
             console.error("Error stringifying or sending message:", error);
+            return false;
         }
     }
 
@@ -208,6 +287,11 @@ export class SocketService {
         if (this.pingInterval) {
             clearInterval(this.pingInterval);
             this.pingInterval = null;
+        }
+
+        if (this.queueProcessor) {
+            clearInterval(this.queueProcessor);
+            this.queueProcessor = null;
         }
 
         if (this.socket) {
@@ -235,48 +319,39 @@ export class SocketService {
 
     // Emit a kick user event
     public kickUser(userId: string): void {
-        this.send({
+        const message = {
             event: SocketEvent.KICK_USER,
             userId: this.userId,
             roomId: this.roomId,
             payload: userId
-        });
+        };
+
+        if (!this.send(message)) {
+            console.error("Failed to send kick user message, queueing");
+        }
     }
 
     // Emit a leave room event
     public leaveRoom(): void {
-        this.send({
+        const message = {
             event: SocketEvent.LEAVE_ROOM,
             userId: this.userId,
             roomId: this.roomId,
             payload: null
-        });
+        };
+
+        if (this.isConnected()) {
+            this.send(message);
+        }
+
+        // Always disconnect even if sending fails
         this.disconnect();
     }
 
-    // Submit a vote
+    // Submit a vote with improved error handling
     public submitVote(value: number | null): void {
         console.log(`Submitting vote to server: ${value}`);
 
-        // Ensure we're connected
-        if (!this.isConnected()) {
-            console.error("WebSocket not connected for vote submission");
-
-            // Try to reconnect
-            this.connect(this.roomId, this.userId);
-
-            // Retry after reconnection attempt
-            setTimeout(() => {
-                if (this.isConnected()) {
-                    this.submitVote(value);
-                } else {
-                    console.error("Failed to reconnect for vote submission");
-                }
-            }, 1000);
-            return;
-        }
-
-        // Prepare and send the vote message
         const voteMessage = {
             event: SocketEvent.SUBMIT_VOTE,
             userId: this.userId,
@@ -287,78 +362,64 @@ export class SocketService {
         // Log the exact message being sent
         console.log("Sending vote message:", JSON.stringify(voteMessage));
 
-        // Ensure message is sent properly
-        try {
-            this.send(voteMessage);
+        // Send the message or queue if failed
+        if (!this.send(voteMessage)) {
+            console.error("Failed to send vote message immediately, queued for retry");
+        } else {
             console.log("Vote message sent successfully");
-        } catch (error) {
-            console.error("Error sending vote message:", error);
         }
     }
 
-    private reconnectAndRetry(callback: () => void) {
-        console.log('Attempting to reconnect before retrying operation');
-        this.disconnect();
-
-        setTimeout(() => {
-            this.connect(this.roomId, this.userId);
-
-            // Wait for connection and retry
-            setTimeout(() => {
-                if (this.isConnected()) {
-                    callback();
-                } else {
-                    console.error('Failed to reconnect for retry');
-                }
-            }, 1000);
-        }, 500);
-    }
-
-    // Reveal votes
+    // Reveal votes with improved handling
     public revealVotes(reveal: boolean): void {
-        this.send({
+        const message = {
             event: SocketEvent.REVEAL_VOTES,
             userId: this.userId,
             roomId: this.roomId,
             payload: reveal
-        });
+        };
+
+        if (!this.send(message)) {
+            console.error("Failed to send reveal votes message, queueing");
+        }
     }
 
-    // Reset votes
+    // Reset votes with improved handling
     public resetVotes(): void {
-        this.send({
+        const message = {
             event: SocketEvent.RESET_VOTES,
             userId: this.userId,
             roomId: this.roomId,
             payload: null
-        });
+        };
+
+        if (!this.send(message)) {
+            console.error("Failed to send reset votes message, queueing");
+        }
     }
 
-    // Update the current issue
+    // Update the current issue with improved error handling
     public updateIssue(issue: string): void {
         console.log(`Updating issue to server: ${issue}`);
 
-        if (!this.isConnected()) {
-            console.error('Cannot update issue: WebSocket not connected');
-            this.reconnectAndRetry(() => this.updateIssue(issue));
-            return;
-        }
-
-        this.send({
+        const message = {
             event: SocketEvent.ISSUE_UPDATED,
             userId: this.userId,
             roomId: this.roomId,
             payload: issue
-        });
+        };
 
-        // Trigger a debug event
-        this.eventListeners.get('debug-event')?.forEach(callback => {
-            callback({ type: 'issue-update-sent', issue });
-        });
+        if (!this.send(message)) {
+            console.error("Failed to send issue update message, queueing");
+        } else {
+            console.log("Issue update message sent successfully");
+
+            // Notify debug listeners for testing
+            this.eventListeners.get('debug-event')?.forEach(callback => {
+                callback({ type: 'issue-update-sent', issue });
+            });
+        }
     }
-
-    private pingInterval: NodeJS.Timeout | null = null;
-
 }
 
 export default SocketService.getInstance();
