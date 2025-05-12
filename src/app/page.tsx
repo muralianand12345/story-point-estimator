@@ -14,10 +14,10 @@ import {
     Tab,
     Tabs,
     AppBar,
-    Divider,
     useTheme
 } from '@mui/material';
 import ThemeToggle from '@/components/ui/ThemeToggle';
+import apiService from '@/lib/apiService';
 
 const HomePage: React.FC = () => {
     const [activeTab, setActiveTab] = useState<number>(0);
@@ -41,20 +41,7 @@ const HomePage: React.FC = () => {
         setError('');
 
         try {
-            const response = await fetch('/api/room', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ roomName, hostName }),
-            });
-
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Failed to create room');
-            }
-
-            const data = await response.json();
+            const data = await apiService.createRoom({ roomName, hostName });
 
             // Store user data in localStorage
             localStorage.setItem('userId', data.userId);
@@ -76,30 +63,16 @@ const HomePage: React.FC = () => {
 
         try {
             // First find room by code
-            const findResponse = await fetch(`/api/room/code/${roomCode}`);
+            const findData = await apiService.findRoomByCode(roomCode);
 
-            if (!findResponse.ok) {
+            if (!findData.exists || !findData.roomId) {
                 throw new Error('Invalid room code. Please check and try again.');
             }
 
-            const findData = await findResponse.json();
             const roomId = findData.roomId;
 
             // Then join the room
-            const joinResponse = await fetch(`/api/room/${roomId}/join`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ userName: joinName }),
-            });
-
-            if (!joinResponse.ok) {
-                const data = await joinResponse.json();
-                throw new Error(data.error || 'Failed to join room');
-            }
-
-            const joinData = await joinResponse.json();
+            const joinData = await apiService.joinRoom(roomId, { userName: joinName });
 
             // Store user data in localStorage
             localStorage.setItem('userId', joinData.userId);

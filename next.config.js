@@ -3,8 +3,8 @@ const nextConfig = {
     reactStrictMode: true,
     swcMinify: true,
     env: {
-        DATABASE_URL: process.env.DATABASE_URL,
-        PORT: process.env.PORT,
+        NEXT_PUBLIC_DENO_API_URL: process.env.NEXT_PUBLIC_DENO_API_URL,
+        NEXT_PUBLIC_DENO_WS_URL: process.env.NEXT_PUBLIC_DENO_WS_URL,
     },
 };
 
