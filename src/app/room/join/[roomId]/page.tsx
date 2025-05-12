@@ -12,6 +12,7 @@ import {
     CircularProgress,
     Alert
 } from '@mui/material';
+import apiService from '@/lib/apiService';
 
 const JoinRoomPage: React.FC = () => {
     const { roomId } = useParams<{ roomId: string }>();
@@ -25,9 +26,7 @@ const JoinRoomPage: React.FC = () => {
     useEffect(() => {
         const checkRoom = async () => {
             try {
-                const response = await fetch(`/api/room/${roomId}/check`);
-                const data = await response.json();
-
+                const data = await apiService.checkRoom(roomId as string);
                 setRoomExists(data.exists);
                 setIsLoading(false);
             } catch (error) {
@@ -47,20 +46,7 @@ const JoinRoomPage: React.FC = () => {
         setError('');
 
         try {
-            const response = await fetch(`/api/room/${roomId}/join`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ userName }),
-            });
-
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Failed to join room');
-            }
-
-            const data = await response.json();
+            const data = await apiService.joinRoom(roomId as string, { userName });
 
             // Store user data in localStorage
             localStorage.setItem('userId', data.userId);

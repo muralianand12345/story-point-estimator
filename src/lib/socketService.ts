@@ -1,6 +1,6 @@
 import { SocketEvent } from '@/types';
 
-// Class to manage native WebSocket connections
+// Class to manage WebSocket connections with the Deno backend
 export class SocketService {
     private static instance: SocketService;
     private socket: WebSocket | null = null;
@@ -28,8 +28,8 @@ export class SocketService {
             this.roomId = roomId;
             this.userId = userId;
 
-            // Get the WebSocket URL from environment variables or fallback to a default
-            this.url = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'wss://your-deno-server.com/ws';
+            // Get the WebSocket URL from environment variables
+            this.url = process.env.NEXT_PUBLIC_DENO_WS_URL || 'wss://your-deno-server.com/ws';
 
             console.log(`Connecting WebSocket for room ${roomId}, user ${userId}`);
 
@@ -187,7 +187,6 @@ export class SocketService {
 
     // Submit a vote
     public submitVote(value: number | null): void {
-        console.log(`Submitting vote: ${value}`);
         this.send({
             event: SocketEvent.SUBMIT_VOTE,
             userId: this.userId,
