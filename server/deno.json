@@ -1,38 +1,46 @@
 {
-    "tasks": {
-        "dev": "deno run --allow-net --allow-read --allow-env main.ts",
-        "start": "deno run --allow-net --allow-read --allow-env main.ts"
+    "compilerOptions": {
+        "lib": [
+            "deno.window"
+        ],
+        "strict": true
     },
     "lint": {
-        "include": [
-            "**/*.ts"
-        ],
-        "exclude": [
-            "node_modules/"
-        ],
+        "files": {
+            "include": [
+                "server/"
+            ]
+        },
         "rules": {
             "tags": [
                 "recommended"
-            ],
-            "exclude": [
-                "no-explicit-any"
             ]
         }
     },
-    "compilerOptions": {
-        "strict": true,
-        "noImplicitAny": true,
-        "strictNullChecks": true,
-        "strictFunctionTypes": true,
-        "strictPropertyInitialization": true,
-        "noImplicitThis": true
+    "fmt": {
+        "files": {
+            "include": [
+                "server/"
+            ]
+        },
+        "options": {
+            "useTabs": false,
+            "lineWidth": 100,
+            "indentWidth": 2,
+            "singleQuote": true,
+            "proseWrap": "preserve"
+        }
     },
-    "deploy": {
-        "project": "8606cb23-e28d-4a87-88ba-de974eaf0194",
-        "exclude": [
-            "**/node_modules"
-        ],
-        "include": [],
-        "entrypoint": "main.ts"
+    "tasks": {
+        "start": "deno run --allow-net --allow-env --allow-read server.ts",
+        "dev": "deno run --allow-net --allow-env --allow-read --watch server.ts",
+        "test": "deno test --allow-net --allow-env"
+    },
+    "imports": {
+        "oak": "https://deno.land/x/oak@v17.1.4/mod.ts",
+        "uuid": "npm:uuid@^11.1.0",
+        "cors": "https://deno.land/x/cors@v1.2.2/mod.ts",
+        "dotenv": "https://deno.land/std@0.140.0/dotenv/mod.ts",
+        "media_types": "https://deno.land/std@0.142.0/media_types/mod.ts"
     }
 }

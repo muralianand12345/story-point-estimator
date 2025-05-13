@@ -1,10 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     reactStrictMode: true,
-    swcMinify: true,
-    env: {
-        NEXT_PUBLIC_DENO_API_URL: process.env.NEXT_PUBLIC_DENO_API_URL,
-        NEXT_PUBLIC_DENO_WS_URL: process.env.NEXT_PUBLIC_DENO_WS_URL,
+
+    async rewrites() {
+        return [
+            {
+                source: '/server/:path*',
+                destination: `${process.env.DENO_SERVER_URL || 'http://localhost:8000'}/:path*`,
+            },
+        ];
     },
 };
 

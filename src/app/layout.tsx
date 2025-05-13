@@ -1,14 +1,12 @@
-'use client';
+import React from 'react';
+import { Metadata } from 'next';
+import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
+import { ThemeProvider } from '../components/theme/ThemeProvider';
 
-import { Inter } from 'next/font/google';
-import ThemeProvider from '@/components/ThemeProvider';
-import './globals.css';
-
-// Configure the Inter font
-const inter = Inter({
-    subsets: ['latin'],
-    display: 'swap',
-});
+export const metadata: Metadata = {
+    title: 'Story Point Estimator',
+    description: 'A collaborative tool for agile story point estimation',
+};
 
 export default function RootLayout({
     children,
@@ -17,14 +15,12 @@ export default function RootLayout({
 }) {
     return (
         <html lang="en">
-            <head>
-                <title>Story Point Estimator</title>
-                <meta name="description" content="A collaborative tool for agile story point estimation" />
-            </head>
-            <body className={inter.className}>
-                <ThemeProvider>
-                    {children}
-                </ThemeProvider>
+            <body>
+                <AppRouterCacheProvider>
+                    <ThemeProvider>
+                        {children}
+                    </ThemeProvider>
+                </AppRouterCacheProvider>
             </body>
         </html>
     );
