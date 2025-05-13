@@ -74,6 +74,23 @@ const RoomPage: React.FC = () => {
 
     // Handle user joined callback with proper typing
     const handleUserJoined = useCallback(async (joinedUserId: string) => {
+        // First, update immediately with available data
+        if (joinedUserId) {
+            // Try to get user info from the joined event first
+            const existingUsers = [...users];
+            const userExists = existingUsers.some(user => user.id === joinedUserId);
+
+            if (!userExists) {
+                // Optimistically add a placeholder user while waiting for full data
+                console.log(`User ${joinedUserId} joined, adding placeholder`);
+                setUsers(prev => [
+                    ...prev,
+                    { id: joinedUserId, name: "New user...", createdAt: new Date().toISOString() }
+                ]);
+            }
+        }
+
+        // Then fetch complete data for accuracy
         try {
             const data = await apiService.getRoomData(safeRoomId);
             setRoom(data.room);
@@ -81,7 +98,7 @@ const RoomPage: React.FC = () => {
         } catch (error) {
             console.error('Error updating users after join:', error);
         }
-    }, [safeRoomId]);
+    }, [safeRoomId, users]);
 
     // Handle user left callback with proper typing
     const handleUserLeft = useCallback(async (leftUserId: string) => {

@@ -1,5 +1,5 @@
 import { WebSocketClient, SocketEvent, SocketMessage, Vote, VotingState } from "./types.ts";
-import { roomDB, roomUserDB, voteDB, issueDB } from "../db/schema.ts";
+import { roomDB, roomUserDB, voteDB, issueDB, userDB } from "../db/schema.ts";
 import { VoteRecord, Issue } from "../models/types.ts";
 
 class RoomManager {
@@ -23,13 +23,34 @@ class RoomManager {
             console.log(`Client registered: ${clientId}`);
             this.clients.set(clientId, { socket, userId, roomId });
 
-            // Notify room about new user only if it's a new client
-            this.broadcastToRoom(roomId, {
-                event: SocketEvent.USER_JOINED,
-                userId,
-                roomId,
-                payload: userId
-            });
+            // Get user information before broadcasting
+            (async () => {
+                try {
+                    const user = await userDB.findById(userId);
+                    if (user) {
+                        // Notify room about new user with full user data
+                        this.broadcastToRoom(roomId, {
+                            event: SocketEvent.USER_JOINED,
+                            userId,
+                            roomId,
+                            payload: {
+                                id: user.id,
+                                name: user.name,
+                                createdAt: user.created_at
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error getting user data for broadcast:', error);
+                    // Fallback to just sending userId if we can't get user info
+                    this.broadcastToRoom(roomId, {
+                        event: SocketEvent.USER_JOINED,
+                        userId,
+                        roomId,
+                        payload: userId
+                    });
+                }
+            })();
         }
 
         // Initialize room state if not exists

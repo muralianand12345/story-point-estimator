@@ -248,20 +248,30 @@ export class SocketService {
 
     private send(data: any): boolean {
         if (!this.socket) {
+            console.log("No socket connection, queueing message", data);
             this.queueMessage(data);
+            this.connect(this.roomId, this.userId);
             return false;
         }
 
         if (this.socket.readyState !== WebSocket.OPEN) {
+            console.log("Socket not open, queueing message", data);
             this.queueMessage(data);
+
+            // Force reconnect if socket is closed
+            if (this.socket.readyState === WebSocket.CLOSED) {
+                this.connect(this.roomId, this.userId);
+            }
             return false;
         }
 
         try {
             const message = JSON.stringify(data);
             this.socket.send(message);
+            console.log("Message sent successfully:", data.event);
             return true;
         } catch (error) {
+            console.error("Error sending message:", error);
             this.queueMessage(data);
             return false;
         }

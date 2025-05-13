@@ -216,21 +216,31 @@ const VotingArea: React.FC<VotingAreaProps> = ({
             return newVotes;
         });
 
-        // Submit to server
-        try {
-            if (!socketService.isConnected()) {
-                socketService.connect(roomId, currentUserId);
-                setTimeout(() => {
-                    if (socketService.isConnected()) {
-                        socketService.submitVote(serverValue);
+        // Submit to server with retry logic
+        const submitWithRetry = (attempts = 0) => {
+            try {
+                if (!socketService.isConnected()) {
+                    if (attempts < 3) {
+                        console.log(`Socket disconnected, attempting to reconnect (${attempts + 1}/3)`);
+                        socketService.connect(roomId, currentUserId);
+                        setTimeout(() => submitWithRetry(attempts + 1), 500);
+                        return;
+                    } else {
+                        console.error("Failed to connect after 3 attempts");
                     }
-                }, 500);
-            } else {
-                socketService.submitVote(serverValue);
+                } else {
+                    socketService.submitVote(serverValue);
+                    console.log(`Vote submitted: ${serverValue}`);
+                }
+            } catch (error) {
+                console.error("Error submitting vote:", error);
+                if (attempts < 3) {
+                    setTimeout(() => submitWithRetry(attempts + 1), 500);
+                }
             }
-        } catch (error) {
-            console.error("Error submitting vote:", error);
-        }
+        };
+
+        submitWithRetry();
 
         // Reset submitting state after a short delay
         setTimeout(() => setIsSubmitting(false), 300);
