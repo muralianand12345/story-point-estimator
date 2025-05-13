@@ -1,7 +1,11 @@
-import { Application, Router, Context } from "https://deno.land/x/oak@v10.6.0/mod.ts";
+import { Application, Router } from "oak";
 import { handleConnection } from "./websocket/roomHandler.ts";
 import { createRoom, validateRoom, getRoomDetails } from "./api/roomController.ts";
 import { roomStore } from "./db/store.ts";
+import { initializeDatabase } from "./db/database.ts";
+
+// Initialize database
+initializeDatabase();
 
 // Create Oak application
 const app = new Application();
@@ -15,7 +19,7 @@ router.get("/api/rooms/validate", validateRoom);
 router.get("/api/rooms/:roomId", getRoomDetails);
 
 // WebSocket route
-router.get("/ws/rooms/:roomId", (context: Context) => {
+router.get("/ws/rooms/:roomId", (context) => {
     if (!context.isUpgradable) {
         context.response.status = 400;
         context.response.body = { error: "Cannot upgrade to WebSocket" };
@@ -38,7 +42,7 @@ app.use(router.routes());
 app.use(router.allowedMethods());
 
 // Log requests
-app.use(async (context: Context, next: () => Promise<unknown>) => {
+app.use(async (context, next) => {
     const start = Date.now();
     await next();
     const ms = Date.now() - start;
@@ -46,7 +50,7 @@ app.use(async (context: Context, next: () => Promise<unknown>) => {
 });
 
 // Error handling
-app.use(async (context: Context, next: () => Promise<unknown>) => {
+app.use(async (context, next) => {
     try {
         await next();
     } catch (error) {

@@ -1,4 +1,4 @@
-import { Context } from "https://deno.land/x/oak@v10.6.0/mod.ts";
+import { Context } from "https://deno.land/x/oak@v12.6.1/mod.ts";
 import { roomStore } from "../db/store.ts";
 
 // Create a new room

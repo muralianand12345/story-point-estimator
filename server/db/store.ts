@@ -1,17 +1,48 @@
-import { Room, User } from "../types/room.ts";
+// server/db/store.ts
+import { Room, User, VoteHistory } from "../types/room.ts";
 import { v4 as uuidv4 } from "uuid";
+import { db } from "./database.ts";
 
-// In-memory data store for rooms
+// Define types for database rows
+interface RoomRow {
+    id: string;
+    hostId: string;
+    issueName: string;
+    votingEnabled: number;
+    votesRevealed: number;
+    createdAt: number;
+    lastActivity: number;
+}
+
+interface UserRow {
+    id: string;
+    roomId: string;
+    name: string;
+    isHost: number;
+    vote: string | null;
+}
+
+interface VoteHistoryRow {
+    id: string;
+    roomId: string;
+    issueName: string;
+    finalScore: string | null;
+    timestamp: number;
+}
+
+interface VoteDetailRow {
+    historyId: string;
+    userId: string;
+    userName: string;
+    vote: string;
+}
+
+// SQLite-based room store
 class RoomStore {
-    private rooms: Map<string, Room>;
-
-    constructor() {
-        this.rooms = new Map<string, Room>();
-    }
-
     // Create a new room
     public createRoom(): Room {
         const roomId = uuidv4().substring(0, 8);
+        const now = Date.now();
 
         const room: Room = {
             id: roomId,
@@ -21,24 +52,112 @@ class RoomStore {
             votingEnabled: true,
             votesRevealed: false,
             voteHistory: [],
-            createdAt: Date.now(),
-            lastActivity: Date.now()
+            createdAt: now,
+            lastActivity: now,
         };
 
-        this.rooms.set(roomId, room);
+        db.query<never>(
+            `INSERT INTO rooms (id, hostId, issueName, votingEnabled, votesRevealed, createdAt, lastActivity)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [
+                roomId,
+                "",
+                "Untitled Story",
+                1,
+                0,
+                now,
+                now,
+            ]
+        );
+
         return room;
     }
 
     // Get a room by ID
     public getRoom(roomId: string): Room | undefined {
-        return this.rooms.get(roomId);
+        const roomRows = [...db.query<[
+            string, string, string, number, number, number, number
+        ]>(
+            `SELECT id, hostId, issueName, votingEnabled, votesRevealed, createdAt, lastActivity 
+       FROM rooms WHERE id = ?`,
+            [roomId]
+        )];
+
+        if (roomRows.length === 0) {
+            return undefined;
+        }
+
+        const roomRow = roomRows[0];
+
+        // Get users
+        const usersRows = [...db.query<[
+            string, string, string, number, string | null
+        ]>(
+            `SELECT id, roomId, name, isHost, vote FROM users WHERE roomId = ?`,
+            [roomId]
+        )];
+
+        const users: User[] = usersRows.map((row) => ({
+            id: row[0],
+            name: row[2],
+            isHost: Boolean(row[3]),
+            vote: row[4],
+        }));
+
+        // Get vote history
+        const historyRows = [...db.query<[
+            string, string, string, string | null, number
+        ]>(
+            `SELECT id, roomId, issueName, finalScore, timestamp 
+       FROM vote_history WHERE roomId = ? ORDER BY timestamp DESC`,
+            [roomId]
+        )];
+
+        const voteHistory: VoteHistory[] = [];
+
+        for (const historyRow of historyRows) {
+            const historyId = historyRow[0];
+
+            const voteDetails = [...db.query<[
+                string, string, string, string
+            ]>(
+                `SELECT historyId, userId, userName, vote FROM vote_details WHERE historyId = ?`,
+                [historyId]
+            )];
+
+            voteHistory.push({
+                id: historyId,
+                issueName: historyRow[2],
+                votes: voteDetails.map((vote) => ({
+                    userId: vote[1],
+                    userName: vote[2],
+                    vote: vote[3],
+                })),
+                finalScore: historyRow[3] ?? undefined,
+                timestamp: historyRow[4],
+            });
+        }
+
+        return {
+            id: roomRow[0],
+            hostId: roomRow[1],
+            issueName: roomRow[2],
+            users,
+            votingEnabled: Boolean(roomRow[3]),
+            votesRevealed: Boolean(roomRow[4]),
+            voteHistory,
+            createdAt: roomRow[5],
+            lastActivity: roomRow[6],
+        };
     }
 
-    // Update a room
-    public updateRoom(room: Room): Room {
-        room.lastActivity = Date.now();
-        this.rooms.set(room.id, room);
-        return room;
+    // Update a room's timestamp
+    private updateRoomTimestamp(roomId: string): void {
+        const now = Date.now();
+        db.query<never>(
+            `UPDATE rooms SET lastActivity = ? WHERE id = ?`,
+            [now, roomId]
+        );
     }
 
     // Add a user to a room
@@ -50,12 +169,29 @@ class RoomStore {
         if (room.users.length === 0) {
             user.isHost = true;
             room.hostId = user.id;
+
+            // Update room's hostId
+            db.query<never>(
+                `UPDATE rooms SET hostId = ? WHERE id = ?`,
+                [user.id, roomId]
+            );
         }
 
-        room.users.push(user);
-        this.updateRoom(room);
+        // Add user to the database
+        db.query<never>(
+            `INSERT OR REPLACE INTO users (id, roomId, name, isHost, vote)
+       VALUES (?, ?, ?, ?, ?)`,
+            [
+                user.id,
+                roomId,
+                user.name,
+                user.isHost ? 1 : 0,
+                user.vote,
+            ]
+        );
 
-        return room;
+        this.updateRoomTimestamp(roomId);
+        return this.getRoom(roomId);
     }
 
     // Remove a user from a room
@@ -69,25 +205,31 @@ class RoomStore {
         // Check if user is host
         const isHost = room.users[userIndex].isHost;
 
-        // Remove the user
-        room.users.splice(userIndex, 1);
+        // Remove the user from the database
+        db.query<never>(
+            `DELETE FROM users WHERE id = ? AND roomId = ?`,
+            [userId, roomId]
+        );
 
         // Transfer host if necessary
-        if (isHost && room.users.length > 0) {
+        if (isHost && room.users.length > 1) {
             // Transfer host to the next user who joined
-            room.users[0].isHost = true;
-            room.hostId = room.users[0].id;
+            const nextHostId = room.users.find(u => u.id !== userId)?.id;
+            if (nextHostId) {
+                db.query<never>(
+                    `UPDATE users SET isHost = 1 WHERE id = ? AND roomId = ?`,
+                    [nextHostId, roomId]
+                );
+
+                db.query<never>(
+                    `UPDATE rooms SET hostId = ? WHERE id = ?`,
+                    [nextHostId, roomId]
+                );
+            }
         }
 
-        this.updateRoom(room);
-
-        // If no users left, consider cleaning up the room later
-        if (room.users.length === 0) {
-            // For now, we'll keep the room around, but we could implement
-            // a cleanup mechanism after a certain period of inactivity
-        }
-
-        return room;
+        this.updateRoomTimestamp(roomId);
+        return this.getRoom(roomId);
     }
 
     // Update a user's vote
@@ -98,10 +240,13 @@ class RoomStore {
         const user = room.users.find((u) => u.id === userId);
         if (!user) return room;
 
-        user.vote = vote;
-        this.updateRoom(room);
+        db.query<never>(
+            `UPDATE users SET vote = ? WHERE id = ? AND roomId = ?`,
+            [vote, userId, roomId]
+        );
 
-        return room;
+        this.updateRoomTimestamp(roomId);
+        return this.getRoom(roomId);
     }
 
     // Reveal votes in a room
@@ -109,24 +254,35 @@ class RoomStore {
         const room = this.getRoom(roomId);
         if (!room) return undefined;
 
-        room.votesRevealed = true;
+        // Update room state
+        db.query<never>(
+            `UPDATE rooms SET votesRevealed = 1 WHERE id = ?`,
+            [roomId]
+        );
 
         // Add to vote history
-        const voteHistory = {
-            id: uuidv4(),
-            issueName: room.issueName,
-            votes: room.users.filter(u => u.vote !== null).map(u => ({
-                userId: u.id,
-                userName: u.name,
-                vote: u.vote as string
-            })),
-            timestamp: Date.now()
-        };
+        const historyId = uuidv4();
+        const now = Date.now();
 
-        room.voteHistory.push(voteHistory);
-        this.updateRoom(room);
+        db.query<never>(
+            `INSERT INTO vote_history (id, roomId, issueName, timestamp)
+       VALUES (?, ?, ?, ?)`,
+            [historyId, roomId, room.issueName, now]
+        );
 
-        return room;
+        // Add vote details
+        for (const user of room.users) {
+            if (user.vote !== null) {
+                db.query<never>(
+                    `INSERT INTO vote_details (historyId, userId, userName, vote)
+           VALUES (?, ?, ?, ?)`,
+                    [historyId, user.id, user.name, user.vote]
+                );
+            }
+        }
+
+        this.updateRoomTimestamp(roomId);
+        return this.getRoom(roomId);
     }
 
     // Reset votes in a room
@@ -134,14 +290,18 @@ class RoomStore {
         const room = this.getRoom(roomId);
         if (!room) return undefined;
 
-        room.users.forEach(user => {
-            user.vote = null;
-        });
+        db.query<never>(
+            `UPDATE users SET vote = NULL WHERE roomId = ?`,
+            [roomId]
+        );
 
-        room.votesRevealed = false;
-        this.updateRoom(room);
+        db.query<never>(
+            `UPDATE rooms SET votesRevealed = 0 WHERE id = ?`,
+            [roomId]
+        );
 
-        return room;
+        this.updateRoomTimestamp(roomId);
+        return this.getRoom(roomId);
     }
 
     // Update issue name
@@ -149,31 +309,24 @@ class RoomStore {
         const room = this.getRoom(roomId);
         if (!room) return undefined;
 
-        room.issueName = issueName;
-        this.updateRoom(room);
+        db.query<never>(
+            `UPDATE rooms SET issueName = ? WHERE id = ?`,
+            [issueName, roomId]
+        );
 
-        return room;
+        this.updateRoomTimestamp(roomId);
+        return this.getRoom(roomId);
     }
 
-    // Clean up old rooms (call this periodically)
+    // Clean up old rooms
     public cleanupOldRooms(maxAgeMs: number): void {
         const now = Date.now();
-        const roomsToDelete: string[] = [];
+        const cutoffTime = now - maxAgeMs;
 
-        this.rooms.forEach((room, roomId) => {
-            if (now - room.lastActivity > maxAgeMs) {
-                roomsToDelete.push(roomId);
-            }
-        });
-
-        roomsToDelete.forEach(roomId => {
-            this.rooms.delete(roomId);
-        });
-    }
-
-    // Get all rooms (mainly for debugging)
-    public getAllRooms(): Room[] {
-        return Array.from(this.rooms.values());
+        db.query<never>(
+            `DELETE FROM rooms WHERE lastActivity < ?`,
+            [cutoffTime]
+        );
     }
 }
 

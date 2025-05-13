@@ -67,41 +67,42 @@ const handleMessage = (clientId: string, ws: WebSocket, message: any) => {
     const { type, payload } = message;
 
     switch (type) {
-        case "join_room":
+        case "join_room": {
             handleJoinRoom(clientId, ws, payload);
             break;
-
-        case "leave_room":
+        }
+        case "leave_room": {
             handleLeaveRoom(clientId, payload);
             break;
-
-        case "vote":
+        }
+        case "vote": {
             handleVote(clientId, payload);
             break;
-
-        case "reveal_votes":
+        }
+        case "reveal_votes": {
             handleRevealVotes(clientId, payload);
             break;
-
-        case "reset_votes":
+        }
+        case "reset_votes": {
             handleResetVotes(clientId, payload);
             break;
-
-        case "update_issue_name":
+        }
+        case "update_issue_name": {
             handleUpdateIssueName(clientId, payload);
             break;
-
-        case "kick_user":
+        }
+        case "kick_user": {
             handleKickUser(clientId, payload);
             break;
-
-        default:
+        }
+        default: {
             ws.send(JSON.stringify({
                 type: "error",
                 payload: {
                     message: "Unknown message type"
                 }
             }));
+        }
     }
 };
 
