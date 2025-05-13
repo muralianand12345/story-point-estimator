@@ -18,18 +18,14 @@ const VotingCard: React.FC<VotingCardProps> = ({
     revealed,
     disabled
 }) => {
-    // Handle card click with logging
     const handleClick = () => {
-        console.log(`Card clicked: ${value}, disabled: ${disabled}`);
         if (!disabled) {
-            console.log(`Selecting value: ${value}`);
             onSelect();
         }
     };
 
     // Determine the color based on the card value
     const getCardColor = () => {
-        // Use red for face cards, black for numbers
         if (value === '?' || value === 'Pass') {
             return '#6A5ACD'; // SlateBlue for special cards
         } else if ([0, 0.5, 1, 2, 3, 5, 8, 13, 20, 40, 100].includes(Number(value))) {
@@ -119,21 +115,6 @@ const VotingCard: React.FC<VotingCardProps> = ({
                     }}
                 />
             )}
-
-            {/* Reflection effect for playing card feel */}
-            <Box
-                sx={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: '40%',
-                    background: 'linear-gradient(to bottom, rgba(255,255,255,0.3), rgba(255,255,255,0))',
-                    borderTopLeftRadius: '10px',
-                    borderTopRightRadius: '10px',
-                    pointerEvents: 'none',
-                }}
-            />
         </Paper>
     );
 };

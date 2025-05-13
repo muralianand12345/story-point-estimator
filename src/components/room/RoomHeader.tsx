@@ -15,9 +15,7 @@ import {
     DialogContent,
     DialogActions,
     TextField,
-    Grid,
-    Snackbar,
-    Alert
+    Grid
 } from '@mui/material';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -40,7 +38,6 @@ const RoomHeader: React.FC<RoomHeaderProps> = ({
     onLeaveRoom,
 }) => {
     const [dialogOpen, setDialogOpen] = useState<boolean>(false);
-    const [copySuccess, setCopySuccess] = useState<string | null>(null);
 
     const handleOpenDialog = () => {
         setDialogOpen(true);
@@ -52,16 +49,10 @@ const RoomHeader: React.FC<RoomHeaderProps> = ({
 
     const handleCopyLink = () => {
         navigator.clipboard.writeText(inviteLink);
-        setCopySuccess('Invite link copied to clipboard!');
     };
 
     const handleCopyCode = () => {
         navigator.clipboard.writeText(roomCode);
-        setCopySuccess('Room code copied to clipboard!');
-    };
-
-    const handleSnackbarClose = () => {
-        setCopySuccess(null);
     };
 
     return (
@@ -184,23 +175,6 @@ const RoomHeader: React.FC<RoomHeaderProps> = ({
                     <Button onClick={handleCloseDialog}>Close</Button>
                 </DialogActions>
             </Dialog>
-
-            {/* Success Snackbar */}
-            <Snackbar
-                open={!!copySuccess}
-                autoHideDuration={3000}
-                onClose={handleSnackbarClose}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            >
-                <Alert
-                    onClose={handleSnackbarClose}
-                    severity="success"
-                    variant="filled"
-                    sx={{ width: '100%' }}
-                >
-                    {copySuccess}
-                </Alert>
-            </Snackbar>
         </>
     );
 };

@@ -9,8 +9,6 @@ import {
     Divider,
     TextField,
     Chip,
-    Snackbar,
-    Alert,
     Dialog,
     DialogTitle,
     DialogContent,
@@ -44,7 +42,6 @@ const VotingArea: React.FC<VotingAreaProps> = ({
     const [issueInput, setIssueInput] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
     const [connectionStatus, setConnectionStatus] = useState<boolean>(false);
-    const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
     const [confirmRevealDialog, setConfirmRevealDialog] = useState<boolean>(false);
     const [confirmResetDialog, setConfirmResetDialog] = useState<boolean>(false);
     const [votedCount, setVotedCount] = useState<number>(0);
@@ -52,16 +49,6 @@ const VotingArea: React.FC<VotingAreaProps> = ({
 
     // Fibonacci-like sequence for story points
     const pointValues = [0, 0.5, 1, 2, 3, 5, 8, 13, 20, 40, 100, '?', 'Pass'];
-
-    // Show notification
-    const showNotification = (type: 'success' | 'error' | 'info', message: string) => {
-        setNotification({ type, message });
-    };
-
-    // Close notification
-    const closeNotification = () => {
-        setNotification(null);
-    };
 
     // Update user counts whenever users change
     useEffect(() => {
@@ -73,55 +60,37 @@ const VotingArea: React.FC<VotingAreaProps> = ({
         setVotedCount(Object.keys(votes).length);
     }, [votes]);
 
-    // Ensure socket connection is active and perform regular checks
+    // Ensure socket connection is active
     useEffect(() => {
         if (!currentUserId || !roomId) return;
-
-        console.log(`Checking socket connection for user ${currentUserId} in room ${roomId}`);
 
         // Check connection status
         const isConnected = socketService.isConnected();
         setConnectionStatus(isConnected);
 
         if (!isConnected) {
-            console.log("Socket not connected. Connecting...");
             try {
                 socketService.connect(roomId, currentUserId);
                 setTimeout(() => {
-                    if (socketService.isConnected()) {
-                        setConnectionStatus(true);
-                        showNotification('success', 'Connected to room successfully');
-                    } else {
-                        setConnectionStatus(false);
-                        showNotification('error', 'Could not connect to room');
-                    }
+                    setConnectionStatus(socketService.isConnected());
                 }, 1000);
             } catch (error) {
                 console.error("Failed to connect socket:", error);
                 setConnectionStatus(false);
-                showNotification('error', 'Failed to connect to room');
             }
         }
 
         // Set up periodic connection check
         const intervalId = setInterval(() => {
             const connected = socketService.isConnected();
-
-            // Only update state if the connection status has changed
             if (connected !== connectionStatus) {
                 setConnectionStatus(connected);
-
                 if (!connected) {
-                    console.log("Socket disconnected. Reconnecting...");
-                    showNotification('info', 'Connection lost. Reconnecting...');
                     try {
                         socketService.connect(roomId, currentUserId);
                     } catch (err) {
                         console.error("Reconnection failed:", err);
-                        showNotification('error', 'Reconnection failed');
                     }
-                } else {
-                    showNotification('success', 'Connection restored');
                 }
             }
         }, 5000);
@@ -129,10 +98,8 @@ const VotingArea: React.FC<VotingAreaProps> = ({
         return () => clearInterval(intervalId);
     }, [currentUserId, roomId, connectionStatus]);
 
-    // Handle votes updated event - made into useCallback to avoid recreation
+    // Handle votes updated event
     const handleVotesUpdated = useCallback((updatedVotes: Record<string, Vote>) => {
-        console.log("Received updated votes:", updatedVotes);
-
         // Update votes with server data
         setVotes(updatedVotes);
         setVotedCount(Object.keys(updatedVotes).length);
@@ -152,41 +119,26 @@ const VotingArea: React.FC<VotingAreaProps> = ({
 
     // Handle votes revealed event
     const handleVotesRevealed = useCallback((revealed: boolean) => {
-        console.log("Votes revealed event received:", revealed);
         setIsRevealed(revealed);
-
-        if (revealed) {
-            showNotification('info', 'Votes have been revealed');
-        }
     }, []);
 
     // Handle votes reset event
     const handleVotesReset = useCallback(() => {
-        console.log("Votes reset event received");
         setVotes({});
         setSelectedValue(null);
         setIsRevealed(false);
         setVotedCount(0);
-        showNotification('info', 'Votes have been reset');
     }, []);
 
     // Handle issue updated event
     const handleIssueUpdated = useCallback((issue: string) => {
-        console.log("Issue updated event received:", issue);
         setCurrentIssue(issue);
-        // Clear input when issue is updated (especially useful for the host)
         setIssueInput('');
-
-        if (issue) {
-            showNotification('info', 'New issue set: ' + issue);
-        }
     }, []);
 
     // Register socket event handlers
     useEffect(() => {
         if (!currentUserId || !roomId) return;
-
-        console.log("Setting up socket event listeners");
 
         // Make sure we're connected first
         if (!socketService.isConnected()) {
@@ -199,35 +151,20 @@ const VotingArea: React.FC<VotingAreaProps> = ({
         socketService.on(SocketEvent.RESET_VOTES, handleVotesReset);
         socketService.on(SocketEvent.ISSUE_UPDATED, handleIssueUpdated);
 
-        // Register for user joined event
-        socketService.on(SocketEvent.USER_JOINED, (userId: string) => {
-            console.log(`User joined: ${userId}`);
-            showNotification('info', 'A new user has joined the room');
-
-            // Request updated votes when a user joins
+        // Register for user events
+        socketService.on(SocketEvent.USER_JOINED, () => {
             socketService.requestRoomState();
         });
 
-        // Register for user left event
-        socketService.on(SocketEvent.USER_LEFT, (userId: string) => {
-            console.log(`User left: ${userId}`);
-            showNotification('info', 'A user has left the room');
-
-            // Request updated votes when a user leaves
+        socketService.on(SocketEvent.USER_LEFT, () => {
             socketService.requestRoomState();
-        });
-
-        // Register for kicked event
-        socketService.on(SocketEvent.KICKED, () => {
-            console.log('You have been kicked from the room');
-            showNotification('error', 'You have been kicked from the room');
         });
 
         // Manual request to get the current state
         socketService.requestRoomState();
 
         return () => {
-            // Clean up event listeners to avoid memory leaks
+            // Clean up event listeners
             socketService.off(SocketEvent.VOTES_UPDATED);
             socketService.off(SocketEvent.REVEAL_VOTES);
             socketService.off(SocketEvent.RESET_VOTES);
@@ -245,14 +182,10 @@ const VotingArea: React.FC<VotingAreaProps> = ({
         handleIssueUpdated
     ]);
 
-    // Improved vote handler
+    // Vote handler
     const handleVote = (value: number | string) => {
-        // Don't allow voting if votes are revealed or already submitting
         if (isRevealed || isSubmitting) return;
 
-        console.log(`Vote initiated for value: ${value}`);
-
-        // Mark as submitting to prevent double-votes
         setIsSubmitting(true);
 
         // Process value for server
@@ -286,127 +219,74 @@ const VotingArea: React.FC<VotingAreaProps> = ({
         // Submit to server
         try {
             if (!socketService.isConnected()) {
-                console.error("Socket not connected, attempting to reconnect...");
                 socketService.connect(roomId, currentUserId);
-
-                // Give it some time to connect
                 setTimeout(() => {
                     if (socketService.isConnected()) {
                         socketService.submitVote(serverValue);
-                        console.log(`Vote sent to server after reconnection: ${serverValue}`);
-                    } else {
-                        console.error("Failed to reconnect socket for vote");
-                        showNotification('error', 'Failed to submit vote - connection error');
                     }
                 }, 500);
             } else {
                 socketService.submitVote(serverValue);
-                console.log(`Vote sent to server: ${serverValue}`);
-                showNotification('success', `Vote submitted: ${value}`);
             }
         } catch (error) {
             console.error("Error submitting vote:", error);
-            showNotification('error', 'Error submitting vote');
         }
 
         // Reset submitting state after a short delay
         setTimeout(() => setIsSubmitting(false), 300);
     };
 
-    // Open confirm reveal dialog
-    const openRevealDialog = () => {
-        setConfirmRevealDialog(true);
-    };
-
-    // Close confirm reveal dialog
-    const closeRevealDialog = () => {
-        setConfirmRevealDialog(false);
-    };
-
-    // Open confirm reset dialog
-    const openResetDialog = () => {
-        setConfirmResetDialog(true);
-    };
-
-    // Close confirm reset dialog
-    const closeResetDialog = () => {
-        setConfirmResetDialog(false);
-    };
+    // Dialog handlers
+    const openRevealDialog = () => setConfirmRevealDialog(true);
+    const closeRevealDialog = () => setConfirmRevealDialog(false);
+    const openResetDialog = () => setConfirmResetDialog(true);
+    const closeResetDialog = () => setConfirmResetDialog(false);
 
     // Reveal votes (host only)
     const handleRevealVotes = () => {
         if (!isHost || isRevealed) return;
-
         closeRevealDialog();
 
         try {
-            console.log("Revealing votes...");
-
-            if (!socketService.isConnected()) {
-                showNotification('error', 'Cannot reveal votes - connection error');
-                return;
+            if (socketService.isConnected()) {
+                socketService.revealVotes(true);
+                setIsRevealed(true);
             }
-
-            socketService.revealVotes(true);
-            showNotification('info', 'Revealing votes...');
-
-            // Local update immediately for better UX
-            setIsRevealed(true);
         } catch (error) {
             console.error("Error revealing votes:", error);
-            showNotification('error', 'Error revealing votes');
         }
     };
 
     // Reset votes (host only)
     const handleResetVotes = () => {
         if (!isHost) return;
-
         closeResetDialog();
 
         try {
-            console.log("Resetting votes...");
-
-            if (!socketService.isConnected()) {
-                showNotification('error', 'Cannot reset votes - connection error');
-                return;
+            if (socketService.isConnected()) {
+                socketService.resetVotes();
+                setVotes({});
+                setSelectedValue(null);
+                setIsRevealed(false);
+                setVotedCount(0);
             }
-
-            socketService.resetVotes();
-            showNotification('info', 'Resetting votes...');
-
-            // Local immediate update for better UX
-            setVotes({});
-            setSelectedValue(null);
-            setIsRevealed(false);
-            setVotedCount(0);
         } catch (error) {
             console.error("Error resetting votes:", error);
-            showNotification('error', 'Error resetting votes');
         }
     };
 
-    // Update issue (host only) - improved with error handling
+    // Update issue (host only)
     const handleUpdateIssue = () => {
         if (!isHost || !issueInput.trim()) return;
 
-        console.log(`Updating issue: ${issueInput}`);
-
         try {
-            if (!socketService.isConnected()) {
-                showNotification('error', 'Cannot set issue - connection error');
-                return;
+            if (socketService.isConnected()) {
+                socketService.updateIssue(issueInput.trim());
+                setCurrentIssue(issueInput.trim());
+                setIssueInput('');
             }
-
-            socketService.updateIssue(issueInput.trim());
-            showNotification('success', 'Issue updated');
-
-            // Update local state immediately for better UX
-            setCurrentIssue(issueInput.trim());
-            setIssueInput('');
         } catch (error) {
             console.error("Error updating issue:", error);
-            showNotification('error', 'Error updating issue');
         }
     };
 
@@ -544,24 +424,6 @@ const VotingArea: React.FC<VotingAreaProps> = ({
                     </Box>
                 )}
             </Paper>
-
-            {/* Notification system */}
-            {notification && (
-                <Snackbar
-                    open={true}
-                    autoHideDuration={3000}
-                    onClose={closeNotification}
-                    anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-                >
-                    <Alert
-                        onClose={closeNotification}
-                        severity={notification.type}
-                        sx={{ width: '100%' }}
-                    >
-                        {notification.message}
-                    </Alert>
-                </Snackbar>
-            )}
 
             {/* Reveal votes confirmation dialog */}
             <Dialog
