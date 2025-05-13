@@ -20,9 +20,24 @@ interface ErrorResponse {
 }
 
 // Create a new room
-export const createRoom = (context: Context): void => {
+export const createRoom = async (context: Context): Promise<void> => {
     try {
-        const room = roomStore.createRoom();
+        let roomName = "Untitled Story";
+
+        // Try to parse the request body if present
+        if (context.request.hasBody) {
+            try {
+                const body = await context.request.body({ type: "json" }).value;
+                if (body && body.roomName) {
+                    roomName = body.roomName;
+                }
+            } catch (err) {
+                console.warn("Failed to parse request body:", err);
+                // Continue with default name
+            }
+        }
+
+        const room = roomStore.createRoom(roomName);
 
         context.response.status = 200;
         context.response.body = {

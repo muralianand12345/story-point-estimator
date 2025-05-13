@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
     Container,
     Typography,
@@ -8,36 +8,25 @@ import {
     Button,
     Paper,
     Divider,
-    useTheme as useMuiTheme
+    useTheme
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import LoginIcon from '@mui/icons-material/Login';
 import { useRouter } from 'next/navigation';
+import CreateRoomForm from './CreateRoomForm';
 
 const HomePage = () => {
-    const theme = useMuiTheme();
+    const theme = useTheme();
     const router = useRouter();
-
-    const handleCreateRoom = async () => {
-        try {
-            const response = await fetch('/api/rooms/create', {
-                method: 'POST',
-            });
-
-            if (response.ok) {
-                const { roomId } = await response.json();
-                router.push(`/room/${roomId}`);
-            } else {
-                console.error('Failed to create room');
-            }
-        } catch (error) {
-            console.error('Error creating room:', error);
-        }
-    };
+    const [showCreateForm, setShowCreateForm] = useState(false);
 
     const handleJoinRoom = () => {
         router.push('/join');
     };
+
+    if (showCreateForm) {
+        return <CreateRoomForm onBack={() => setShowCreateForm(false)} />;
+    }
 
     return (
         <Container maxWidth="md">
@@ -78,7 +67,7 @@ const HomePage = () => {
                             size="large"
                             color="primary"
                             startIcon={<AddIcon />}
-                            onClick={handleCreateRoom}
+                            onClick={() => setShowCreateForm(true)}
                             fullWidth
                             sx={{ py: 1.5 }}
                         >

@@ -65,6 +65,8 @@ const RoomPage = () => {
         ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/server/ws/rooms/${roomId}`
         : '';
 
+    console.log("WebSocket connecting to:", wsUrl);
+
     const { isConnected, sendMessage } = useWebSocket(wsUrl, {
         onOpen: () => {
             console.log('WebSocket connected');

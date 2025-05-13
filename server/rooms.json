@@ -9,5 +9,27 @@
     "voteHistory": [],
     "createdAt": 1747119616961,
     "lastActivity": 1747119655029
+  },
+  "2b9606db": {
+    "id": "2b9606db",
+    "hostId": "395aa946-1100-42f2-a2e2-a54accf30d71",
+    "issueName": "Untitled Story",
+    "users": [],
+    "votingEnabled": true,
+    "votesRevealed": false,
+    "voteHistory": [],
+    "createdAt": 1747131886406,
+    "lastActivity": 1747131920291
+  },
+  "9524fbf0": {
+    "id": "9524fbf0",
+    "hostId": "395aa946-1100-42f2-a2e2-a54accf30d71",
+    "issueName": "Untitled Story",
+    "users": [],
+    "votingEnabled": true,
+    "votesRevealed": false,
+    "voteHistory": [],
+    "createdAt": 1747131971179,
+    "lastActivity": 1747131980028
   }
 }

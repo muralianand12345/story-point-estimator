@@ -5,14 +5,14 @@ import { getRoom, storeRoom, cleanupOldRooms as dbCleanupOldRooms } from "./data
 // Room store using in-memory database with JSON persistence
 class RoomStore {
     // Create a new room
-    public createRoom(): Room {
+    public createRoom(issueName: string = "Untitled Story"): Room {
         const roomId = uuidv4().substring(0, 8);
         const now = Date.now();
 
         const room: Room = {
             id: roomId,
             hostId: "",
-            issueName: "Untitled Story",
+            issueName: issueName,
             users: [],
             votingEnabled: true,
             votesRevealed: false,

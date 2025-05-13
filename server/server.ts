@@ -19,7 +19,7 @@ const app = new Application();
 
 // Add CORS middleware
 app.use(oakCors({
-    origin: true, // Allow any origin or specify your frontend URL
+    origin: "*",
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true
