@@ -2,10 +2,16 @@ import { Application, Router } from "oak";
 import { handleConnection } from "./websocket/roomHandler.ts";
 import { createRoom, validateRoom, getRoomDetails } from "./api/roomController.ts";
 import { roomStore } from "./db/store.ts";
-import { initializeDatabase } from "./db/database.ts";
+import { initializeDatabase, closeDatabase, saveDatabase } from "./db/database.ts";
 
 // Initialize database
-initializeDatabase();
+try {
+    console.log("Initializing database...");
+    initializeDatabase();
+} catch (error) {
+    console.error("Failed to initialize database. Exiting:", error);
+    Deno.exit(1);
+}
 
 // Create Oak application
 const app = new Application();
@@ -30,12 +36,47 @@ router.get("/ws/rooms/:roomId", (context) => {
     handleConnection(ws);
 });
 
+// Periodically save the database (every 5 minutes)
+const SAVE_INTERVAL = 5 * 60 * 1000;
+const saveInterval = setInterval(() => {
+    console.log("Saving database...");
+    saveDatabase();
+}, SAVE_INTERVAL);
+
 // Clean up old rooms periodically (24 hours)
 const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000;
-setInterval(() => {
+const cleanup = setInterval(() => {
     console.log("Cleaning up old rooms...");
-    roomStore.cleanupOldRooms(48 * 60 * 60 * 1000); // Clean rooms older than 48 hours
+    try {
+        roomStore.cleanupOldRooms(48 * 60 * 60 * 1000); // Clean rooms older than 48 hours
+    } catch (error) {
+        console.error("Error during cleanup:", error);
+    }
 }, CLEANUP_INTERVAL);
+
+// Add shutdown handler
+const handleShutdown = () => {
+    console.log("Shutting down server...");
+    clearInterval(saveInterval);
+    clearInterval(cleanup);
+    closeDatabase();
+    Deno.exit(0);
+};
+
+// Handle shutdown signals - Windows only supports SIGINT and SIGBREAK
+try {
+    Deno.addSignalListener("SIGINT", handleShutdown);
+
+    // On Windows, SIGBREAK is used instead of SIGTERM
+    // On non-Windows platforms, use SIGTERM
+    if (Deno.build.os === "windows") {
+        Deno.addSignalListener("SIGBREAK", handleShutdown);
+    } else {
+        Deno.addSignalListener("SIGTERM", handleShutdown);
+    }
+} catch (error) {
+    console.warn("Failed to add signal listeners:", error);
+}
 
 // Use router
 app.use(router.routes());

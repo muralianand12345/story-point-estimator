@@ -1,4 +1,18 @@
 import { WebSocketClient, Room, User } from "../types/room.ts";
+import {
+    WebSocketMessage,
+    JoinRoomMessage,
+    LeaveRoomMessage,
+    VoteMessage,
+    RevealVotesMessage,
+    ResetVotesMessage,
+    UpdateIssueNameMessage,
+    KickUserMessage,
+    RoomStateMessage,
+    ErrorMessage,
+    KickedMessage,
+    OutgoingMessage
+} from "../types/messages.ts";
 import { roomStore } from "../db/store.ts";
 import { v4 as uuidv4 } from "uuid";
 
@@ -6,7 +20,7 @@ import { v4 as uuidv4 } from "uuid";
 const clients = new Map<string, WebSocketClient>();
 
 // Send message to all clients in a room
-const broadcastToRoom = (roomId: string, message: any) => {
+const broadcastToRoom = (roomId: string, message: OutgoingMessage): void => {
     for (const client of clients.values()) {
         if (client.roomId === roomId) {
             try {
@@ -19,107 +33,111 @@ const broadcastToRoom = (roomId: string, message: any) => {
 };
 
 // Send updated room state to all clients in a room
-const broadcastRoomState = (room: Room) => {
-    broadcastToRoom(room.id, {
+const broadcastRoomState = (room: Room): void => {
+    const message: RoomStateMessage = {
         type: "room_state",
         payload: {
             room
         }
-    });
+    };
+    broadcastToRoom(room.id, message);
 };
 
 // Handle client connection
-export const handleConnection = (ws: WebSocket) => {
+export const handleConnection = (ws: WebSocket): void => {
     const clientId = uuidv4();
 
     console.log(`New WebSocket connection: ${clientId}`);
 
     // Set up message handler
-    ws.onmessage = (event) => {
+    ws.onmessage = (event: MessageEvent): void => {
         try {
-            const message = JSON.parse(event.data);
+            const message = JSON.parse(event.data) as WebSocketMessage;
             handleMessage(clientId, ws, message);
         } catch (error) {
             console.error("Error parsing WebSocket message:", error);
-            ws.send(JSON.stringify({
+            const errorMessage: ErrorMessage = {
                 type: "error",
                 payload: {
                     message: "Invalid message format"
                 }
-            }));
+            };
+            ws.send(JSON.stringify(errorMessage));
         }
     };
 
     // Set up close handler
-    ws.onclose = () => {
+    ws.onclose = (): void => {
         handleDisconnect(clientId);
     };
 
     // Set up error handler
-    ws.onerror = (error) => {
+    ws.onerror = (error: Event | ErrorEvent): void => {
         console.error(`WebSocket error for client ${clientId}:`, error);
         handleDisconnect(clientId);
     };
 };
 
 // Handle client messages
-const handleMessage = (clientId: string, ws: WebSocket, message: any) => {
-    const { type, payload } = message;
+const handleMessage = (clientId: string, ws: WebSocket, message: WebSocketMessage): void => {
+    const { type } = message;
 
     switch (type) {
         case "join_room": {
-            handleJoinRoom(clientId, ws, payload);
+            handleJoinRoom(clientId, ws, message as JoinRoomMessage);
             break;
         }
         case "leave_room": {
-            handleLeaveRoom(clientId, payload);
+            handleLeaveRoom(clientId, message as LeaveRoomMessage);
             break;
         }
         case "vote": {
-            handleVote(clientId, payload);
+            handleVote(clientId, message as VoteMessage);
             break;
         }
         case "reveal_votes": {
-            handleRevealVotes(clientId, payload);
+            handleRevealVotes(clientId, message as RevealVotesMessage);
             break;
         }
         case "reset_votes": {
-            handleResetVotes(clientId, payload);
+            handleResetVotes(clientId, message as ResetVotesMessage);
             break;
         }
         case "update_issue_name": {
-            handleUpdateIssueName(clientId, payload);
+            handleUpdateIssueName(clientId, message as UpdateIssueNameMessage);
             break;
         }
         case "kick_user": {
-            handleKickUser(clientId, payload);
+            handleKickUser(clientId, message as KickUserMessage);
             break;
         }
         default: {
-            ws.send(JSON.stringify({
+            const errorMessage: ErrorMessage = {
                 type: "error",
                 payload: {
                     message: "Unknown message type"
                 }
-            }));
+            };
+            ws.send(JSON.stringify(errorMessage));
         }
     }
 };
 
 // Handle join room request
-const handleJoinRoom = (clientId: string, ws: WebSocket, payload: any) => {
-    const { roomId, userId, userName } = payload;
+const handleJoinRoom = (clientId: string, ws: WebSocket, message: JoinRoomMessage): void => {
+    const { roomId, userId, userName } = message.payload;
 
     // Check if room exists
     let room = roomStore.getRoom(roomId);
 
     if (!room) {
-        ws.send(JSON.stringify({
+        const errorMessage: ErrorMessage = {
             type: "error",
             payload: {
                 message: "Room not found"
             }
-        }));
+        };
+        ws.send(JSON.stringify(errorMessage));
         return;
     }
 
@@ -154,11 +172,11 @@ const handleJoinRoom = (clientId: string, ws: WebSocket, payload: any) => {
 };
 
 // Handle leave room request
-const handleLeaveRoom = (clientId: string, payload: any) => {
+const handleLeaveRoom = (clientId: string, message: LeaveRoomMessage): void => {
     const client = clients.get(clientId);
     if (!client) return;
 
-    const { roomId, userId } = payload;
+    const { roomId, userId } = message.payload;
 
     // Remove user from room
     const room = roomStore.removeUserFromRoom(roomId, userId);
@@ -173,7 +191,7 @@ const handleLeaveRoom = (clientId: string, payload: any) => {
 };
 
 // Handle client disconnect
-const handleDisconnect = (clientId: string) => {
+const handleDisconnect = (clientId: string): void => {
     console.log(`WebSocket client disconnected: ${clientId}`);
 
     const client = clients.get(clientId);
@@ -192,11 +210,11 @@ const handleDisconnect = (clientId: string) => {
 };
 
 // Handle vote submission
-const handleVote = (clientId: string, payload: any) => {
+const handleVote = (clientId: string, message: VoteMessage): void => {
     const client = clients.get(clientId);
     if (!client) return;
 
-    const { roomId, userId, vote } = payload;
+    const { roomId, userId, vote } = message.payload;
 
     // Update user's vote
     const room = roomStore.updateUserVote(roomId, userId, vote);
@@ -208,21 +226,22 @@ const handleVote = (clientId: string, payload: any) => {
 };
 
 // Handle revealing votes
-const handleRevealVotes = (clientId: string, payload: any) => {
+const handleRevealVotes = (clientId: string, message: RevealVotesMessage): void => {
     const client = clients.get(clientId);
     if (!client) return;
 
-    const { roomId, userId } = payload;
+    const { roomId, userId } = message.payload;
 
     // Check if user is host
     const room = roomStore.getRoom(roomId);
     if (!room || room.hostId !== userId) {
-        client.ws.send(JSON.stringify({
+        const errorMessage: ErrorMessage = {
             type: "error",
             payload: {
                 message: "Only the host can reveal votes"
             }
-        }));
+        };
+        client.ws.send(JSON.stringify(errorMessage));
         return;
     }
 
@@ -236,21 +255,22 @@ const handleRevealVotes = (clientId: string, payload: any) => {
 };
 
 // Handle resetting votes
-const handleResetVotes = (clientId: string, payload: any) => {
+const handleResetVotes = (clientId: string, message: ResetVotesMessage): void => {
     const client = clients.get(clientId);
     if (!client) return;
 
-    const { roomId, userId } = payload;
+    const { roomId, userId } = message.payload;
 
     // Check if user is host
     const room = roomStore.getRoom(roomId);
     if (!room || room.hostId !== userId) {
-        client.ws.send(JSON.stringify({
+        const errorMessage: ErrorMessage = {
             type: "error",
             payload: {
                 message: "Only the host can reset votes"
             }
-        }));
+        };
+        client.ws.send(JSON.stringify(errorMessage));
         return;
     }
 
@@ -264,21 +284,22 @@ const handleResetVotes = (clientId: string, payload: any) => {
 };
 
 // Handle updating issue name
-const handleUpdateIssueName = (clientId: string, payload: any) => {
+const handleUpdateIssueName = (clientId: string, message: UpdateIssueNameMessage): void => {
     const client = clients.get(clientId);
     if (!client) return;
 
-    const { roomId, userId, issueName } = payload;
+    const { roomId, userId, issueName } = message.payload;
 
     // Check if user is host
     const room = roomStore.getRoom(roomId);
     if (!room || room.hostId !== userId) {
-        client.ws.send(JSON.stringify({
+        const errorMessage: ErrorMessage = {
             type: "error",
             payload: {
                 message: "Only the host can update the issue name"
             }
-        }));
+        };
+        client.ws.send(JSON.stringify(errorMessage));
         return;
     }
 
@@ -292,21 +313,22 @@ const handleUpdateIssueName = (clientId: string, payload: any) => {
 };
 
 // Handle kicking a user
-const handleKickUser = (clientId: string, payload: any) => {
+const handleKickUser = (clientId: string, message: KickUserMessage): void => {
     const client = clients.get(clientId);
     if (!client) return;
 
-    const { roomId, userId, targetUserId } = payload;
+    const { roomId, userId, targetUserId } = message.payload;
 
     // Check if user is host
     const room = roomStore.getRoom(roomId);
     if (!room || room.hostId !== userId) {
-        client.ws.send(JSON.stringify({
+        const errorMessage: ErrorMessage = {
             type: "error",
             payload: {
                 message: "Only the host can kick users"
             }
-        }));
+        };
+        client.ws.send(JSON.stringify(errorMessage));
         return;
     }
 
@@ -323,12 +345,13 @@ const handleKickUser = (clientId: string, payload: any) => {
         const targetClient = clients.get(targetClientId);
         if (targetClient) {
             // Notify target user they've been kicked
-            targetClient.ws.send(JSON.stringify({
+            const kickedMessage: KickedMessage = {
                 type: "kicked",
                 payload: {
                     roomId
                 }
-            }));
+            };
+            targetClient.ws.send(JSON.stringify(kickedMessage));
 
             // Close target user's connection
             try {
