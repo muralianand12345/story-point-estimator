@@ -53,6 +53,10 @@ export const handleConnection = (ws: WebSocket): void => {
     ws.onmessage = (event: MessageEvent): void => {
         try {
             const message = JSON.parse(event.data) as WebSocketMessage;
+
+            // Log message for debugging
+            console.log(`Received message from client ${clientId}:`, message.type);
+
             handleMessage(clientId, ws, message);
         } catch (error) {
             console.error("Error parsing WebSocket message:", error);
@@ -67,7 +71,8 @@ export const handleConnection = (ws: WebSocket): void => {
     };
 
     // Set up close handler
-    ws.onclose = (): void => {
+    ws.onclose = (event): void => {
+        console.log(`WebSocket closed for client ${clientId} with code ${event.code} and reason: ${event.reason}`);
         handleDisconnect(clientId);
     };
 

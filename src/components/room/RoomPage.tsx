@@ -83,6 +83,7 @@ const RoomPage = () => {
         onMessage: (event) => {
             try {
                 const message: WebSocketMessage = JSON.parse(event.data);
+                console.log('Received message:', message); // Add this for debugging
 
                 switch (message.type) {
                     case 'room_state':
@@ -102,8 +103,8 @@ const RoomPage = () => {
                 console.error('Error parsing WebSocket message:', error);
             }
         },
-        onClose: () => {
-            console.log('WebSocket disconnected');
+        onClose: (event) => {
+            console.log('WebSocket disconnected with code:', event.code, 'reason:', event.reason);
         },
         onError: (event) => {
             console.error('WebSocket error:', event);
@@ -111,7 +112,8 @@ const RoomPage = () => {
             setIsLoading(false);
         },
         reconnectAttempts: 5,
-        reconnectInterval: 3000
+        reconnectInterval: 3000,
+        debug: true // Enable debug mode
     });
 
     useEffect(() => {

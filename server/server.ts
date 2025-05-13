@@ -1,4 +1,5 @@
 import { Application, Router } from "oak";
+import { oakCors } from "https://deno.land/x/cors@v1.2.2/mod.ts";
 import { handleConnection } from "./websocket/roomHandler.ts";
 import { createRoom, validateRoom, getRoomDetails } from "./api/roomController.ts";
 import { roomStore } from "./db/store.ts";
@@ -15,6 +16,37 @@ try {
 
 // Create Oak application
 const app = new Application();
+
+// Add CORS middleware
+app.use(oakCors({
+    origin: true, // Allow any origin or specify your frontend URL
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true
+}));
+
+// Add request logging middleware
+app.use(async (context, next) => {
+    const start = Date.now();
+
+    // Log request details
+    console.log(`${context.request.method} ${context.request.url.pathname} - Started`);
+
+    try {
+        await next();
+    } catch (error) {
+        if (error instanceof Error) {
+            console.error(`Error processing request: ${error.message}`);
+        } else {
+            console.error("Error processing request:", error);
+        }
+        throw error;
+    }
+
+    // Log response time
+    const ms = Date.now() - start;
+    console.log(`${context.request.method} ${context.request.url.pathname} - ${context.response.status} - ${ms}ms`);
+});
 
 // Create router
 const router = new Router();

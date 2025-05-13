@@ -1,1 +1,13 @@
-{}
+{
+  "560b7336": {
+    "id": "560b7336",
+    "hostId": "395aa946-1100-42f2-a2e2-a54accf30d71",
+    "issueName": "Untitled Story",
+    "users": [],
+    "votingEnabled": true,
+    "votesRevealed": false,
+    "voteHistory": [],
+    "createdAt": 1747119616961,
+    "lastActivity": 1747119655029
+  }
+}
