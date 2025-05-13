@@ -1,6 +1,6 @@
-'use client';
+'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
     Container,
@@ -10,7 +10,8 @@ import {
     Typography,
     Alert,
     useTheme,
-    useMediaQuery
+    useMediaQuery,
+    Snackbar
 } from '@mui/material';
 import RoomHeader from '@/components/room/RoomHeader';
 import UserList from '@/components/room/UserList';
@@ -32,6 +33,7 @@ const RoomPage: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [userId, setUserId] = useState<string>('');
     const [socket, setSocket] = useState<WebSocket | null>(null);
+    const [notification, setNotification] = useState<{ message: string, severity: 'success' | 'error' | 'info' | 'warning' } | null>(null);
 
     // Initialize user data from localStorage
     useEffect(() => {
@@ -44,6 +46,11 @@ const RoomPage: React.FC = () => {
 
         setUserId(storedUserId);
     }, [roomId, router]);
+
+    // Notification helper
+    const showNotification = (message: string, severity: 'success' | 'error' | 'info' | 'warning' = 'info') => {
+        setNotification({ message, severity });
+    };
 
     // Fetch room data
     useEffect(() => {
@@ -59,6 +66,7 @@ const RoomPage: React.FC = () => {
                 console.error('Error fetching room data:', error);
                 setError('Failed to load room data');
                 setIsLoading(false);
+                showNotification('Failed to load room data', 'error');
             }
         };
 
@@ -67,51 +75,73 @@ const RoomPage: React.FC = () => {
         }
     }, [roomId, userId]);
 
-    const safeRoomId = Array.isArray(roomId) ? roomId[0] : roomId;
+    const safeRoomId = Array.isArray(roomId) ? roomId[0] : roomId as string;
 
-    // Initialize socket connection
+    // Handle user joined callback with proper typing
+    const handleUserJoined = useCallback(async (joinedUserId: string) => {
+        console.log(`User joined event received: ${joinedUserId}`);
+
+        try {
+            const data = await apiService.getRoomData(safeRoomId);
+            setRoom(data.room);
+            setUsers(data.users);
+            showNotification('A user has joined the room', 'info');
+        } catch (error) {
+            console.error('Error updating users after join:', error);
+        }
+    }, [safeRoomId]);
+
+    // Handle user left callback with proper typing
+    const handleUserLeft = useCallback(async (leftUserId: string) => {
+        console.log(`User left event received: ${leftUserId}`);
+
+        try {
+            const data = await apiService.getRoomData(safeRoomId);
+            setRoom(data.room);
+            setUsers(data.users);
+            showNotification('A user has left the room', 'info');
+        } catch (error) {
+            console.error('Error updating users after leave:', error);
+        }
+    }, [safeRoomId]);
+
+    // Handle host changed callback with proper typing
+    const handleHostChanged = useCallback((newHostId: string) => {
+        console.log(`Host changed event received: ${newHostId}`);
+
+        setRoom(currentRoom => {
+            if (currentRoom) {
+                const updatedRoom = { ...currentRoom, hostId: newHostId };
+                showNotification('Room host has changed', 'info');
+                return updatedRoom;
+            }
+            return currentRoom;
+        });
+    }, []);
+
+    // Handle kicked callback
+    const handleKicked = useCallback(() => {
+        console.log('You have been kicked from the room');
+
+        localStorage.removeItem('userId');
+        localStorage.removeItem('userName');
+        showNotification('You have been kicked from the room', 'error');
+
+        // Navigate back to home
+        setTimeout(() => {
+            router.push('/');
+        }, 2000);
+    }, [router]);
+
+    // Initialize socket connection and register event handlers
     useEffect(() => {
         if (!userId || !safeRoomId) return;
 
-        // Connect to socket only once we have userId and roomId
+        console.log(`Initializing socket connection: userId=${userId}, roomId=${safeRoomId}`);
+
+        // Connect to socket
         const socketInstance = socketService.connect(safeRoomId, userId);
         setSocket(socketInstance);
-
-        // Define the event handlers
-        const handleUserJoined = async () => {
-            try {
-                const data = await apiService.getRoomData(safeRoomId);
-                setRoom(data.room);
-                setUsers(data.users);
-            } catch (error) {
-                console.error('Error updating users after join:', error);
-            }
-        };
-
-        const handleUserLeft = async (leftUserId: string) => {
-            try {
-                const data = await apiService.getRoomData(safeRoomId);
-                setRoom(data.room);
-                setUsers(data.users);
-            } catch (error) {
-                console.error('Error updating users after leave:', error);
-            }
-        };
-
-        const handleHostChanged = (newHostId: string) => {
-            setRoom(currentRoom => {
-                if (currentRoom) {
-                    return { ...currentRoom, hostId: newHostId };
-                }
-                return currentRoom;
-            });
-        };
-
-        const handleKicked = () => {
-            localStorage.removeItem('userId');
-            localStorage.removeItem('userName');
-            router.push('/');
-        };
 
         // Register event listeners
         socketService.on(SocketEvent.USER_JOINED, handleUserJoined);
@@ -119,23 +149,69 @@ const RoomPage: React.FC = () => {
         socketService.on(SocketEvent.HOST_CHANGED, handleHostChanged);
         socketService.on(SocketEvent.KICKED, handleKicked);
 
+        // For connection status updates
+        socketService.on('connection', (status) => {
+            console.log('Connection status update:', status);
+
+            if (status.status === 'connected') {
+                showNotification('Connected to room', 'success');
+            } else if (status.status === 'disconnected') {
+                showNotification('Disconnected from room', 'error');
+            } else if (status.status === 'reconnecting') {
+                showNotification(`Reconnecting... Attempt ${status.attempt}/${status.maxAttempts}`, 'warning');
+            } else if (status.status === 'reconnection_failed') {
+                showNotification('Failed to reconnect to room', 'error');
+            }
+        });
+
         // Cleanup on unmount
         return () => {
-            socketService.off(SocketEvent.USER_JOINED, handleUserJoined);
-            socketService.off(SocketEvent.USER_LEFT, handleUserLeft);
-            socketService.off(SocketEvent.HOST_CHANGED, handleHostChanged);
-            socketService.off(SocketEvent.KICKED, handleKicked);
+            socketService.off(SocketEvent.USER_JOINED);
+            socketService.off(SocketEvent.USER_LEFT);
+            socketService.off(SocketEvent.HOST_CHANGED);
+            socketService.off(SocketEvent.KICKED);
+            socketService.off('connection');
             socketService.disconnect();
         };
-    }, [safeRoomId, userId, router]);
+    }, [safeRoomId, userId, handleUserJoined, handleUserLeft, handleHostChanged, handleKicked]);
+
+    // Setup auto-refresh timer - polls for room state periodically
+    useEffect(() => {
+        if (!safeRoomId || isLoading) return;
+
+        const refreshInterval = setInterval(async () => {
+            if (socketService.isConnected()) {
+                try {
+                    const data = await apiService.getRoomData(safeRoomId);
+
+                    // Only update if there's a change
+                    if (JSON.stringify(data.users) !== JSON.stringify(users)) {
+                        setUsers(data.users);
+                    }
+
+                    if (data.room && room && data.room.hostId !== room.hostId) {
+                        setRoom(data.room);
+                    }
+                } catch (error) {
+                    console.error('Error refreshing room data:', error);
+                }
+            }
+        }, 15000); // Every 15 seconds
+
+        return () => clearInterval(refreshInterval);
+    }, [safeRoomId, room, users, isLoading]);
 
     const handleKickUser = (kickUserId: string) => {
         if (userId === room?.hostId) {
             socketService.kickUser(kickUserId);
+            showNotification('User has been kicked from the room', 'success');
         }
     };
 
     const handleLeaveRoom = () => {
+        // Show notification
+        showNotification('Leaving room...', 'info');
+
         // Clear user data
         localStorage.removeItem('userId');
         localStorage.removeItem('userName');
@@ -216,6 +292,7 @@ const RoomPage: React.FC = () => {
                         users={users}
                         currentUserId={userId}
                         isHost={userId === room.hostId}
+                        roomId={safeRoomId}
                     />
                 </Grid>
 
@@ -229,18 +306,38 @@ const RoomPage: React.FC = () => {
                     />
                 </Grid>
             </Grid>
+
             {/* Debug panel */}
-            {isMobile ? (
+            {/* {isMobile ? (
                 <Box sx={{ mt: 2 }}>
-                    <Debug roomId={roomId} userId={userId} />
+                    <Debug roomId={safeRoomId} userId={userId} />
                 </Box>
             ) : (
                 <Grid container spacing={3} sx={{ mt: 2 }}>
                     <Grid item xs={12}>
-                        <Debug roomId={roomId} userId={userId} />
+                        <Debug roomId={safeRoomId} userId={userId} />
                     </Grid>
                 </Grid>
-            )}
+            )} */}
+
+            {/* Notification system */}
+            <Snackbar
+                open={notification !== null}
+                autoHideDuration={4000}
+                onClose={() => setNotification(null)}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                {notification ? (
+                    <Alert
+                        onClose={() => setNotification(null)}
+                        severity={notification.severity}
+                        elevation={6}
+                        variant="filled"
+                    >
+                        {notification.message}
+                    </Alert>
+                ) : undefined}
+            </Snackbar>
         </Container>
     );
 };

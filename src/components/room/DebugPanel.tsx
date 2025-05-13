@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Paper, Button, Chip, TextField, Stack } from '@mui/material';
 import socketService from '@/lib/socketService';
